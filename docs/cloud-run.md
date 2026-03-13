@@ -43,7 +43,11 @@ gcloud services enable \
 ### 3. Firestore 作成
 
 ```bash
-gcloud firestore databases create --location=asia-northeast1
+gcloud firestore databases create \
+  --database='(default)' \
+  --location=asia-northeast1 \
+  --edition=standard \
+  --type=firestore-native
 ```
 
 ### 4. Cloud Storage bucket 作成

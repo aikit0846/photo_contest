@@ -84,6 +84,7 @@ uv run python scripts/seed_demo.py
 
 ## 本番公開メモ
 
+- GCP 初期セットアップは [docs/gcp-setup.md](/Users/taikisuzuki/wedding/photo_contest/docs/gcp-setup.md)
 - Cloud Run の source deploy 前提で `Procfile` を追加済みです
 - Cloud Run 用の詳細手順は [docs/cloud-run.md](/Users/taikisuzuki/wedding/photo_contest/docs/cloud-run.md)
 - 本番前の確認事項と救済フローは [docs/runbook.md](/Users/taikisuzuki/wedding/photo_contest/docs/runbook.md)
