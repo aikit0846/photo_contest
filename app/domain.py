@@ -66,7 +66,8 @@ class SubmissionRecord:
 
     @property
     def image_url(self) -> str:
-        return f"/submissions/{self.id}/image"
+        version = int(self.updated_at.timestamp()) if self.updated_at else 0
+        return f"/submissions/{self.id}/image?v={version}"
 
 
 @dataclass(slots=True)
