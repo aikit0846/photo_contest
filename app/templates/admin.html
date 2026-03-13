@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Admin | {{ event.title }}{% endblock %}
+{% block content %}
+<main class="stack large-gap">
+  <section class="grid two-column">
+    <article class="panel">
+      <p class="kicker">Event Control</p>
+      <h2>運用ステータス</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span>ゲスト数</span>
+          <strong>{{ stats.guests }}</strong>
+        </div>
+        <div class="stat-card">
+          <span>抽選対象</span>
+          <strong>{{ stats.eligible_guests }}</strong>
+        </div>
+        <div class="stat-card">
+          <span>投稿数</span>
+          <strong>{{ stats.submissions }}</strong>
+        </div>
+        <div class="stat-card">
+          <span>採点済み</span>
+          <strong>{{ stats.scored }}</strong>
+        </div>
+      </div>
+      <form action="/admin/event/toggle" method="post">
+        <button class="button button-primary" type="submit">
+          {% if event.submissions_open %}投稿を締め切る{% else %}投稿を再開する{% endif %}
+        </button>
+      </form>
+      <form class="stack compact" action="/admin/submissions/judge" method="post">
+        <label class="inline-check">
+          <input type="checkbox" name="force" />
+          すでに採点済みの投稿も再採点する
+        </label>
+        <button class="button button-secondary" type="submit">AI 採点を実行</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <p class="kicker">Provider</p>
+      <h2>AI 採点プロバイダ</h2>
+      <form class="stack" action="/admin/event/provider" method="post">
+        <label>
+          Provider
+          <select name="provider_preference">
+            {% for provider in provider_choices %}
+            <option value="{{ provider }}" {% if provider == event.provider_preference %}selected{% endif %}>
+              {{ provider }}
+            </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Model hint
+          <input type="text" name="model_hint" value="{{ event.model_hint or '' }}" placeholder="gemini-2.5-flash など" />
+        </label>
+        <button class="button button-secondary" type="submit">設定を保存</button>
+      </form>
+      <ul class="simple-list">
+        {% for key, value in provider_status.items() %}
+        <li><strong>{{ key }}</strong>: {{ value }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+  </section>
+
+  <section class="grid two-column">
+    <article class="panel">
+      <p class="kicker">Guest Setup</p>
+      <h2>ゲストを追加</h2>
+      <form class="stack" action="/admin/guests" method="post">
+        <label>
+          氏名
+          <input type="text" name="name" required />
+        </label>
+        <label>
+          表示名
+          <input type="text" name="display_name" placeholder="ニックネームでも可" />
+        </label>
+        <label>
+          卓名
+          <input type="text" name="table_name" placeholder="A 卓 / 新郎友人卓 など" />
+        </label>
+        <label>
+          区分
+          <select name="group_type">
+            <option value="friend">友人</option>
+            <option value="family">親族</option>
+          </select>
+        </label>
+        <label class="inline-check">
+          <input type="checkbox" name="eligible" checked />
+          ランキング対象に含める
+        </label>
+        <label>
+          メモ
+          <textarea name="notes" rows="3"></textarea>
+        </label>
+        <button class="button button-primary" type="submit">ゲストを登録</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <p class="kicker">Leaderboard</p>
+      <h2>暫定ランキング</h2>
+      {% if top_entries %}
+      <ol class="leaderboard">
+        {% for entry in top_entries %}
+        <li>
+          <span>#{{ loop.index }}</span>
+          <strong>{{ entry.guest.label }}</strong>
+          <span>{{ effective_score(entry) }} 点</span>
+          <span>{{ entry.score.summary }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <p>採点済みの投稿がまだありません。</p>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="panel">
+    <p class="kicker">Invite Links</p>
+    <h2>QR コード一覧</h2>
+    <div class="guest-grid">
+      {% for guest in guests %}
+      <article class="guest-card">
+        <img src="/guests/{{ guest.invite_token }}/qr.svg" alt="{{ guest.label }} QR" />
+        <div class="guest-card-body">
+          <h3>{{ guest.label }}</h3>
+          <p>{{ guest.table_name or "卓未設定" }} / {{ "対象" if guest.eligible else "対象外" }}</p>
+          <a class="small-link" href="{{ invite_url(guest) }}" target="_blank" rel="noreferrer">{{ invite_url(guest) }}</a>
+          <form action="/admin/guests/{{ guest.id }}/eligibility" method="post">
+            <button class="button button-ghost" type="submit">
+              {% if guest.eligible %}対象外にする{% else %}対象に戻す{% endif %}
+            </button>
+          </form>
+        </div>
+      </article>
+      {% else %}
+      <p>まだゲストが登録されていません。</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <p class="kicker">Submissions</p>
+    <h2>投稿一覧</h2>
+    <div class="submission-list">
+      {% for submission in submissions %}
+      <article class="submission-card">
+        <img src="{{ submission.image_url }}" alt="{{ submission.guest.label }}" />
+        <div class="submission-card-body">
+          <div class="submission-head">
+            <div>
+              <h3>{{ submission.guest.label }}</h3>
+              <p>{{ submission.guest.table_name or "卓未設定" }} / {{ submission.guest.group_type }}</p>
+            </div>
+            <span class="status-pill {% if submission.is_excluded %}closed{% else %}open{% endif %}">
+              {% if submission.is_excluded %}除外{% else %}{{ submission.judging_state }}{% endif %}
+            </span>
+          </div>
+          <p>{{ submission.caption or "コメントなし" }}</p>
+          {% if submission.score %}
+          <p><strong>{{ effective_score(submission) }} 点</strong> / {{ submission.score.summary }}</p>
+          {% endif %}
+          {% if submission.judge_error %}
+          <p class="error-text">Error: {{ submission.judge_error }}</p>
+          {% endif %}
+          <form class="compact-grid" action="/admin/submissions/{{ submission.id }}/rank" method="post">
+            <label>
+              表示順位
+              <input type="number" min="1" name="display_order" value="{{ submission.display_order or '' }}" />
+            </label>
+            <label>
+              点数補正
+              <input type="number" step="0.1" name="admin_score_adjustment" value="{{ submission.admin_score_adjustment }}" />
+            </label>
+            <button class="button button-secondary" type="submit">保存</button>
+          </form>
+          {% if submission.is_excluded %}
+          <form action="/admin/submissions/{{ submission.id }}/restore" method="post">
+            <button class="button button-ghost" type="submit">ランキングに戻す</button>
+          </form>
+          {% else %}
+          <form class="stack compact" action="/admin/submissions/{{ submission.id }}/exclude" method="post">
+            <input type="text" name="reason" placeholder="除外理由 (任意)" />
+            <button class="button button-ghost" type="submit">ランキング対象外にする</button>
+          </form>
+          {% endif %}
+        </div>
+      </article>
+      {% else %}
+      <p>まだ投稿がありません。</p>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

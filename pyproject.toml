@@ -1,0 +1,21 @@
+[project]
+name = "wedding-photo-contest"
+version = "0.1.0"
+description = "Wedding photo contest app with pluggable AI judging providers."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.116.1",
+  "httpx>=0.28.1",
+  "itsdangerous>=2.2.0",
+  "jinja2>=3.1.6",
+  "pillow>=11.3.0",
+  "pydantic-settings>=2.10.1",
+  "python-multipart>=0.0.20",
+  "qrcode>=8.2",
+  "sqlalchemy>=2.0.43",
+  "uvicorn>=0.35.0",
+]
+
+[tool.uv]
+package = false

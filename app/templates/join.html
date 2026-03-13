@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}エントリー | {{ event.title }}{% endblock %}
+{% block content %}
+<main class="grid two-column">
+  <section class="panel">
+    <p class="kicker">Guest Entry</p>
+    <h2>{{ guest.label }} さんのエントリー</h2>
+    <p>テーブル: {{ guest.table_name or "未設定" }} / 区分: {{ "ご友人" if guest.group_type == "friend" else "ご親族" }}</p>
+    {% if event.submissions_open %}
+    <p>お気に入りの 1 枚をアップロードしてください。締切までは何度でも差し替え可能です。</p>
+    <form class="stack" action="/join/{{ guest.invite_token }}" method="post" enctype="multipart/form-data">
+      <label>
+        写真
+        <input type="file" name="photo" accept="image/*" required />
+      </label>
+      <label>
+        コメント
+        <textarea name="caption" rows="4" placeholder="この写真の見どころを一言"></textarea>
+      </label>
+      <button class="button button-primary" type="submit">写真をエントリーする</button>
+    </form>
+    {% else %}
+    <p class="status-pill closed">現在は投稿受付を締め切っています。</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>現在の登録状況</h2>
+    {% if guest.submission %}
+    <article class="entry-card">
+      <img src="{{ guest.submission.image_url }}" alt="uploaded photo" />
+      <div class="entry-card-body">
+        <p class="rank-chip">{{ guest.submission.judging_state }}</p>
+        <p>ファイル: {{ guest.submission.original_filename }}</p>
+        <p>コメント: {{ guest.submission.caption or "なし" }}</p>
+        {% if guest.submission.score %}
+        <p>AI コメント: {{ guest.submission.score.summary }}</p>
+        {% endif %}
+      </div>
+    </article>
+    {% else %}
+    <p>まだ投稿はありません。QR コードからこのページを開いたまま、ベストショットを選んでアップロードしてください。</p>
+    {% endif %}
+    <p class="helper-text">Safari / Chrome のどちらでも使えるシンプルなフォームです。HEIC で問題が起きる場合は iPhone 側で JPEG にして再投稿してください。</p>
+  </section>
+</main>
+{% endblock %}

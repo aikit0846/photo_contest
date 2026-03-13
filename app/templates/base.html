@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Wedding AI Photo Contest{% endblock %}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <div>
+          <p class="eyebrow">Wedding AI Photo Contest</p>
+          <h1>{{ event.title }}</h1>
+          <p class="site-meta">{{ event.subtitle }}</p>
+        </div>
+        <nav class="site-nav">
+          <a href="/">Home</a>
+          <a href="/admin">Admin</a>
+          <a href="/presentation">Presentation</a>
+        </nav>
+      </header>
+      {% if message %}
+      <div class="flash flash-success">{{ message }}</div>
+      {% endif %}
+      {% if error %}
+      <div class="flash flash-error">{{ error }}</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </body>
+</html>

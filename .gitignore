@@ -1,0 +1,23 @@
+.DS_Store
+
+# Local environment
+.env
+.env.*
+!.env.example
+.venv/
+
+# Python cache / tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime data
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/uploads/
+
+# Misc logs
+*.log

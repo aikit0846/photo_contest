@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Presentation | {{ event.title }}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <meta http-equiv="refresh" content="30" />
+  </head>
+  <body class="presentation-body">
+    <main class="presentation-shell">
+      <header class="presentation-header">
+        <p class="eyebrow">AI Photo Contest Result</p>
+        <h1>{{ event.title }}</h1>
+        <p>{{ event.venue }}</p>
+      </header>
+      <section class="podium">
+        {% for winner in winners %}
+        <article class="podium-card rank-{{ loop.index }}">
+          <p class="podium-rank">{{ loop.index }} 位</p>
+          <img src="{{ winner.image_url }}" alt="{{ winner.guest.label }}" />
+          <div class="podium-body">
+            <h2>{{ winner.guest.label }}</h2>
+            <p class="podium-score">{{ effective_score(winner) }} pts</p>
+            <p>{{ winner.score.summary }}</p>
+          </div>
+        </article>
+        {% else %}
+        <p class="empty-copy">まだ結果がありません。管理画面から採点を実行してください。</p>
+        {% endfor %}
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Home | {{ event.title }}{% endblock %}
+{% block content %}
+<main class="grid two-column">
+  <section class="panel hero-panel">
+    <p class="kicker">挙式会場</p>
+    <h2>{{ event.venue }}</h2>
+    <p>
+      各ゲストは専用の QR コードから写真を 1 枚エントリーできます。中座のタイミングで締切し、
+      再入場後にランキングを発表する想定です。
+    </p>
+    <div class="hero-actions">
+      <a class="button button-primary" href="/presentation">発表モードを見る</a>
+      <a class="button button-secondary" href="/admin">管理画面へ</a>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>現在の上位候補</h2>
+    {% if top_entries %}
+    <div class="cards">
+      {% for entry in top_entries %}
+      <article class="entry-card">
+        <img src="{{ entry.image_url }}" alt="{{ entry.guest.label }}" />
+        <div class="entry-card-body">
+          <p class="rank-chip">暫定 {{ loop.index }} 位</p>
+          <h3>{{ entry.guest.label }}</h3>
+          <p>{{ entry.score.summary }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p>まだ採点済みの投稿がありません。管理画面からゲストを追加し、投稿と採点を進めてください。</p>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}
