@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     app_url: str = "http://127.0.0.1:8000"
     admin_password: str | None = None
 
+    data_backend: str = "sqlite"
+    storage_backend: str = "local"
+    firestore_project: str | None = None
+    firestore_database: str = "(default)"
+    gcs_bucket: str | None = None
+
     database_url: str = f"sqlite:///{(BASE_DIR / 'data' / 'photo_contest.db').as_posix()}"
     data_dir: str = str(BASE_DIR / "data")
     upload_dir: str = str(BASE_DIR / "data" / "uploads")
@@ -30,6 +36,8 @@ class Settings(BaseSettings):
     ollama_model: str = "gemma3:4b"
 
     max_upload_mb: int = 20
+    target_image_max_edge: int = 1600
+    target_image_quality: int = 80
 
     model_config = SettingsConfigDict(
         env_file=".env",

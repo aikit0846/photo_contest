@@ -5,11 +5,11 @@ from fastapi import Depends
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.config import get_settings
-from app.database import get_db
+from app.repositories import ContestRepository
+from app.repositories import get_repository
 from app.services.contest import effective_score
 from app.services.contest import get_event
 from app.services.contest import leaderboard
@@ -22,11 +22,11 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/presentation", response_class=HTMLResponse)
 def presentation(
     request: Request,
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
-    event = get_event(db, settings)
-    winners = leaderboard(db, limit=3)
+    event = get_event(repository, settings)
+    winners = leaderboard(repository, limit=3)
     return templates.TemplateResponse(
         "presentation.html",
         {

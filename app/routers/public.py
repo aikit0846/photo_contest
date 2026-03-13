@@ -15,16 +15,17 @@ from fastapi.responses import HTMLResponse
 from fastapi.responses import RedirectResponse
 from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.config import get_settings
-from app.database import get_db
-from app.services.contest import get_event
-from app.services.contest import get_guest_by_token
+from app.repositories import ContestRepository
+from app.repositories import get_repository
 from app.services.contest import invite_url
 from app.services.contest import leaderboard
 from app.services.contest import save_submission
+from app.services.contest import get_event
+from app.storage import BaseImageStorage
+from app.storage import get_storage
 
 
 router = APIRouter()
@@ -34,11 +35,11 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/", response_class=HTMLResponse)
 def home(
     request: Request,
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
-    event = get_event(db, settings)
-    top_entries = leaderboard(db, limit=3)
+    event = get_event(repository, settings)
+    top_entries = leaderboard(repository, limit=3)
     return templates.TemplateResponse(
         "index.html",
         {
@@ -54,11 +55,11 @@ def home(
 def join_page(
     token: str,
     request: Request,
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
-    event = get_event(db, settings)
-    guest = get_guest_by_token(db, token)
+    event = get_event(repository, settings)
+    guest = repository.get_guest_by_token(token)
     if guest is None:
         raise HTTPException(status_code=404, detail="Invite link not found.")
     return templates.TemplateResponse(
@@ -68,6 +69,7 @@ def join_page(
             "event": event,
             "guest": guest,
             "invite_url": invite_url(settings, guest),
+            "config": settings,
             "message": request.query_params.get("message"),
             "error": request.query_params.get("error"),
         },
@@ -77,18 +79,20 @@ def join_page(
 @router.post("/join/{token}")
 def submit_photo(
     token: str,
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
+    storage: BaseImageStorage = Depends(get_storage),
     settings: Settings = Depends(get_settings),
     caption: str | None = Form(default=None),
     photo: UploadFile = File(...),
 ) -> RedirectResponse:
-    event = get_event(db, settings)
-    guest = get_guest_by_token(db, token)
+    event = get_event(repository, settings)
+    guest = repository.get_guest_by_token(token)
     if guest is None:
         raise HTTPException(status_code=404, detail="Invite link not found.")
     try:
         save_submission(
-            db,
+            repository,
+            storage,
             event=event,
             guest=guest,
             upload=photo,
@@ -109,10 +113,10 @@ def submit_photo(
 @router.get("/guests/{token}/qr.svg")
 def guest_qr(
     token: str,
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> Response:
-    guest = get_guest_by_token(db, token)
+    guest = repository.get_guest_by_token(token)
     if guest is None:
         raise HTTPException(status_code=404, detail="Invite link not found.")
 
@@ -128,3 +132,20 @@ def guest_qr(
     buffer = io.BytesIO()
     image.save(buffer)
     return Response(content=buffer.getvalue(), media_type="image/svg+xml")
+
+
+@router.get("/submissions/{submission_id}/image")
+def submission_image(
+    submission_id: str,
+    repository: ContestRepository = Depends(get_repository),
+    storage: BaseImageStorage = Depends(get_storage),
+) -> Response:
+    submission = repository.get_submission(submission_id)
+    if submission is None:
+        raise HTTPException(status_code=404, detail="Submission not found.")
+    image_bytes = storage.read_image(submission.storage_key)
+    return Response(
+        content=image_bytes,
+        media_type=submission.mime_type,
+        headers={"Cache-Control": "public, max-age=3600"},
+    )

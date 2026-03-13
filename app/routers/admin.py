@@ -8,26 +8,23 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from app.auth import require_admin
 from app.config import Settings
 from app.config import get_settings
-from app.database import get_db
-from app.models import Guest
-from app.models import Submission
+from app.repositories import ContestRepository
+from app.repositories import get_repository
 from app.services.contest import create_guest
 from app.services.contest import effective_score
 from app.services.contest import event_stats
 from app.services.contest import get_event
-from app.services.contest import guest_query
 from app.services.contest import invite_url
 from app.services.contest import judge_submissions
 from app.services.contest import leaderboard
 from app.services.contest import provider_choices
 from app.services.contest import provider_status
-from app.services.contest import submission_query
+from app.storage import BaseImageStorage
+from app.storage import get_storage
 
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
@@ -37,13 +34,13 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("", response_class=HTMLResponse)
 def dashboard(
     request: Request,
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
-    event = get_event(db, settings)
-    guests = db.scalars(guest_query()).all()
-    submissions = db.scalars(submission_query()).all()
-    top_entries = leaderboard(db, limit=10)
+    event = get_event(repository, settings)
+    guests = repository.list_guests()
+    submissions = repository.list_submissions()
+    top_entries = leaderboard(repository, limit=10)
     return templates.TemplateResponse(
         "admin.html",
         {
@@ -53,7 +50,7 @@ def dashboard(
             "submissions": submissions,
             "top_entries": top_entries,
             "invite_url": lambda guest: invite_url(settings, guest),
-            "stats": event_stats(db),
+            "stats": event_stats(repository),
             "provider_choices": provider_choices(),
             "provider_status": provider_status(settings),
             "effective_score": effective_score,
@@ -65,13 +62,12 @@ def dashboard(
 
 @router.post("/event/toggle")
 def toggle_event(
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> RedirectResponse:
-    event = get_event(db, settings)
-    event.submissions_open = not event.submissions_open
-    db.commit()
-    state = "再開" if event.submissions_open else "締切"
+    event = get_event(repository, settings)
+    updated = repository.update_event(submissions_open=not event.submissions_open)
+    state = "再開" if updated.submissions_open else "締切"
     return RedirectResponse(f"/admin?message=投稿受付を{state}にしました。", status_code=303)
 
 
@@ -79,15 +75,14 @@ def toggle_event(
 def update_provider(
     provider_preference: str = Form(...),
     model_hint: str | None = Form(default=None),
-    db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings),
+    repository: ContestRepository = Depends(get_repository),
 ) -> RedirectResponse:
-    event = get_event(db, settings)
     if provider_preference not in provider_choices():
         raise HTTPException(status_code=400, detail="Unknown provider.")
-    event.provider_preference = provider_preference
-    event.model_hint = (model_hint or "").strip() or None
-    db.commit()
+    repository.update_event(
+        provider_preference=provider_preference,
+        model_hint=(model_hint or "").strip() or None,
+    )
     return RedirectResponse("/admin?message=AIプロバイダ設定を更新しました。", status_code=303)
 
 
@@ -99,10 +94,10 @@ def add_guest(
     group_type: str = Form(default="friend"),
     eligible: str | None = Form(default=None),
     notes: str | None = Form(default=None),
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
 ) -> RedirectResponse:
     create_guest(
-        db,
+        repository,
         name=name,
         display_name=display_name,
         table_name=table_name,
@@ -115,27 +110,28 @@ def add_guest(
 
 @router.post("/guests/{guest_id}/eligibility")
 def toggle_guest_eligibility(
-    guest_id: int,
-    db: Session = Depends(get_db),
+    guest_id: str,
+    repository: ContestRepository = Depends(get_repository),
 ) -> RedirectResponse:
-    guest = db.get(Guest, guest_id)
+    guest = repository.get_guest_by_id(guest_id)
     if guest is None:
         raise HTTPException(status_code=404, detail="Guest not found.")
-    guest.eligible = not guest.eligible
-    db.commit()
-    state = "抽選対象" if guest.eligible else "対象外"
+    updated = repository.set_guest_eligibility(guest_id, not guest.eligible)
+    state = "抽選対象" if updated.eligible else "対象外"
     return RedirectResponse(f"/admin?message={guest.label} を{state}にしました。", status_code=303)
 
 
 @router.post("/submissions/judge")
 def run_judging(
     force: str | None = Form(default=None),
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
+    storage: BaseImageStorage = Depends(get_storage),
     settings: Settings = Depends(get_settings),
 ) -> RedirectResponse:
-    event = get_event(db, settings)
+    event = get_event(repository, settings)
     judged, errors, provider_name = judge_submissions(
-        db,
+        repository,
+        storage,
         event=event,
         settings=settings,
         force=force == "on",
@@ -151,47 +147,48 @@ def run_judging(
 
 @router.post("/submissions/{submission_id}/exclude")
 def exclude_submission(
-    submission_id: int,
+    submission_id: str,
     reason: str | None = Form(default=None),
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
 ) -> RedirectResponse:
-    submission = db.get(Submission, submission_id)
+    submission = repository.get_submission(submission_id)
     if submission is None:
         raise HTTPException(status_code=404, detail="Submission not found.")
-    submission.is_excluded = True
-    submission.excluded_reason = (reason or "").strip() or "Admin excluded"
-    submission.display_order = None
-    db.commit()
+    repository.set_submission_exclusion(
+        submission_id,
+        is_excluded=True,
+        reason=(reason or "").strip() or "Admin excluded",
+    )
     return RedirectResponse("/admin?message=投稿をランキング対象外にしました。", status_code=303)
 
 
 @router.post("/submissions/{submission_id}/restore")
 def restore_submission(
-    submission_id: int,
-    db: Session = Depends(get_db),
+    submission_id: str,
+    repository: ContestRepository = Depends(get_repository),
 ) -> RedirectResponse:
-    submission = db.get(Submission, submission_id)
+    submission = repository.get_submission(submission_id)
     if submission is None:
         raise HTTPException(status_code=404, detail="Submission not found.")
-    submission.is_excluded = False
-    submission.excluded_reason = None
-    db.commit()
+    repository.set_submission_exclusion(submission_id, is_excluded=False, reason=None)
     return RedirectResponse("/admin?message=投稿をランキング対象に戻しました。", status_code=303)
 
 
 @router.post("/submissions/{submission_id}/rank")
 def update_submission_rank(
-    submission_id: int,
+    submission_id: str,
     display_order: str | None = Form(default=None),
     admin_score_adjustment: str | None = Form(default=None),
-    db: Session = Depends(get_db),
+    repository: ContestRepository = Depends(get_repository),
 ) -> RedirectResponse:
-    submission = db.get(Submission, submission_id)
+    submission = repository.get_submission(submission_id)
     if submission is None:
         raise HTTPException(status_code=404, detail="Submission not found.")
     display_value = (display_order or "").strip()
     adjustment_value = (admin_score_adjustment or "").strip()
-    submission.display_order = int(display_value) if display_value else None
-    submission.admin_score_adjustment = float(adjustment_value) if adjustment_value else 0.0
-    db.commit()
+    repository.update_submission_rank(
+        submission_id,
+        display_order=int(display_value) if display_value else None,
+        admin_score_adjustment=float(adjustment_value) if adjustment_value else 0.0,
+    )
     return RedirectResponse("/admin?message=手動調整を保存しました。", status_code=303)

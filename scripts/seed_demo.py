@@ -1,9 +1,9 @@
 from app.config import get_settings
-from app.database import SessionLocal
 from app.database import init_db
+from app.repositories import get_repository
 from app.services.contest import create_guest
-from app.services.contest import ensure_default_event
-from app.services.contest import ensure_storage
+from app.services.contest import get_event
+from app.storage import get_storage
 
 
 SAMPLE_GUESTS = [
@@ -18,18 +18,20 @@ SAMPLE_GUESTS = [
 
 def main() -> None:
     settings = get_settings()
-    ensure_storage(settings)
-    init_db()
-    with SessionLocal() as session:
-        ensure_default_event(session, settings)
-        for name, table_name, group_type, eligible in SAMPLE_GUESTS:
-            create_guest(
-                session,
-                name=name,
-                table_name=table_name,
-                group_type=group_type,
-                eligible=eligible,
-            )
+    storage = get_storage()
+    storage.ensure_ready()
+    if settings.data_backend.lower() == "sqlite":
+        init_db()
+    repository = get_repository()
+    get_event(repository, settings)
+    for name, table_name, group_type, eligible in SAMPLE_GUESTS:
+        create_guest(
+            repository,
+            name=name,
+            table_name=table_name,
+            group_type=group_type,
+            eligible=eligible,
+        )
     print("Demo guests created.")
 
 

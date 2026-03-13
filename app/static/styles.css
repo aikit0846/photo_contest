@@ -134,6 +134,11 @@ img {
   text-decoration: none;
 }
 
+.button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .button-primary {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: white;

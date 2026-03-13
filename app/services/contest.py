@@ -1,31 +1,23 @@
 from __future__ import annotations
 
 import mimetypes
-import os
-import secrets
 from pathlib import Path
 from urllib.parse import quote_plus
 
 from fastapi import HTTPException
 from fastapi import UploadFile
-from sqlalchemy import Select
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import joinedload
 
 from app.config import Settings
+from app.domain import EventRecord
+from app.domain import GuestRecord
+from app.domain import ScoreRecord
+from app.domain import SubmissionRecord
+from app.domain import utcnow
 from app.image_utils import analyze_image
-from app.models import Event
-from app.models import Guest
-from app.models import Score
-from app.models import Submission
+from app.repositories import ContestRepository
 from app.services.providers import build_provider
 from app.services.providers import provider_options
-
-
-def ensure_storage(settings: Settings) -> None:
-    settings.data_path.mkdir(parents=True, exist_ok=True)
-    settings.upload_path.mkdir(parents=True, exist_ok=True)
+from app.storage import BaseImageStorage
 
 
 def default_model_hint(settings: Settings, provider_name: str) -> str | None:
@@ -38,33 +30,15 @@ def default_model_hint(settings: Settings, provider_name: str) -> str | None:
     return None
 
 
-def ensure_default_event(session: Session, settings: Settings) -> Event:
-    event = session.get(Event, 1)
-    if event:
-        return event
-
-    event = Event(
-        id=1,
-        title=settings.default_event_title,
-        subtitle=settings.default_event_subtitle,
-        venue=settings.default_venue,
-        event_date=settings.default_event_date,
-        submissions_open=True,
-        provider_preference=settings.ai_provider,
-        model_hint=default_model_hint(settings, settings.ai_provider),
-    )
-    session.add(event)
-    session.commit()
-    session.refresh(event)
+def get_event(repository: ContestRepository, settings: Settings) -> EventRecord:
+    event = repository.ensure_default_event(settings)
+    if not event.model_hint:
+        event = repository.update_event(model_hint=default_model_hint(settings, event.provider_preference))
     return event
 
 
-def get_event(session: Session, settings: Settings) -> Event:
-    return ensure_default_event(session, settings)
-
-
 def create_guest(
-    session: Session,
+    repository: ContestRepository,
     *,
     name: str,
     table_name: str | None,
@@ -72,48 +46,19 @@ def create_guest(
     eligible: bool,
     display_name: str | None = None,
     notes: str | None = None,
-) -> Guest:
-    guest = Guest(
-        name=name.strip(),
-        display_name=(display_name or "").strip() or None,
-        table_name=(table_name or "").strip() or None,
+) -> GuestRecord:
+    return repository.create_guest(
+        name=name,
+        table_name=table_name,
         group_type=group_type,
         eligible=eligible,
-        notes=(notes or "").strip() or None,
-        invite_token=secrets.token_urlsafe(9),
+        display_name=display_name,
+        notes=notes,
     )
-    session.add(guest)
-    session.commit()
-    session.refresh(guest)
-    return guest
 
 
-def invite_url(settings: Settings, guest: Guest) -> str:
+def invite_url(settings: Settings, guest: GuestRecord) -> str:
     return f"{settings.app_url.rstrip('/')}/join/{quote_plus(guest.invite_token)}"
-
-
-def guest_query() -> Select[tuple[Guest]]:
-    return select(Guest).options(joinedload(Guest.submission).joinedload(Submission.score)).order_by(
-        Guest.table_name.asc().nulls_last(),
-        Guest.name.asc(),
-    )
-
-
-def submission_query() -> Select[tuple[Submission]]:
-    return (
-        select(Submission)
-        .options(joinedload(Submission.guest), joinedload(Submission.score))
-        .order_by(Submission.created_at.desc())
-    )
-
-
-def get_guest_by_token(session: Session, token: str) -> Guest | None:
-    statement = (
-        select(Guest)
-        .options(joinedload(Guest.submission).joinedload(Submission.score))
-        .where(Guest.invite_token == token)
-    )
-    return session.scalar(statement)
 
 
 def _pick_extension(upload: UploadFile) -> str:
@@ -127,14 +72,15 @@ def _pick_extension(upload: UploadFile) -> str:
 
 
 def save_submission(
-    session: Session,
+    repository: ContestRepository,
+    storage: BaseImageStorage,
     *,
-    event: Event,
-    guest: Guest,
+    event: EventRecord,
+    guest: GuestRecord,
     upload: UploadFile,
     caption: str | None,
     settings: Settings,
-) -> Submission:
+) -> SubmissionRecord:
     if not event.submissions_open:
         raise HTTPException(status_code=400, detail="Submissions are closed.")
 
@@ -147,86 +93,67 @@ def save_submission(
 
     metrics = analyze_image(image_bytes)
     ext = _pick_extension(upload)
-    filename = f"{guest.invite_token}-{metrics.sha256[:12]}{ext}"
-    destination = settings.upload_path / filename
-    destination.write_bytes(image_bytes)
+    storage_key = f"submissions/{guest.invite_token}/{metrics.sha256[:20]}{ext}"
+    previous_storage_key = guest.submission.storage_key if guest.submission else None
+    storage.save_image(
+        key=storage_key,
+        data=image_bytes,
+        content_type=upload.content_type or "application/octet-stream",
+    )
+    if previous_storage_key and previous_storage_key != storage_key:
+        storage.delete_image(previous_storage_key)
 
-    submission = guest.submission
-    if submission is None:
-        submission = Submission(
-            guest=guest,
-            guest_name_snapshot=guest.label,
-            caption=(caption or "").strip() or None,
-            file_path=str(destination),
-            original_filename=upload.filename or filename,
-            mime_type=upload.content_type or "application/octet-stream",
-            sha256=metrics.sha256,
-            width=metrics.width,
-            height=metrics.height,
-            file_size_bytes=len(image_bytes),
-            judging_state="pending",
-        )
-        session.add(submission)
-    else:
-        old_path = Path(submission.file_path)
-        submission.guest_name_snapshot = guest.label
-        submission.caption = (caption or "").strip() or None
-        submission.file_path = str(destination)
-        submission.original_filename = upload.filename or filename
-        submission.mime_type = upload.content_type or "application/octet-stream"
-        submission.sha256 = metrics.sha256
-        submission.width = metrics.width
-        submission.height = metrics.height
-        submission.file_size_bytes = len(image_bytes)
-        submission.judging_state = "pending"
-        submission.judge_error = None
-        submission.is_excluded = False
-        submission.excluded_reason = None
-        submission.display_order = None
-        submission.admin_score_adjustment = 0.0
-        if submission.score is not None:
-            session.delete(submission.score)
-        if old_path.exists() and old_path != destination:
-            old_path.unlink(missing_ok=True)
-
-    session.commit()
-    session.refresh(submission)
-    return submission
+    return repository.upsert_submission(
+        guest_id=guest.id,
+        guest_name_snapshot=guest.label,
+        caption=(caption or "").strip() or None,
+        storage_key=storage_key,
+        original_filename=upload.filename or Path(storage_key).name,
+        mime_type=upload.content_type or "application/octet-stream",
+        sha256=metrics.sha256,
+        width=metrics.width,
+        height=metrics.height,
+        file_size_bytes=len(image_bytes),
+    )
 
 
 def judge_submissions(
-    session: Session,
+    repository: ContestRepository,
+    storage: BaseImageStorage,
     *,
-    event: Event,
+    event: EventRecord,
     settings: Settings,
     force: bool = False,
 ) -> tuple[int, list[str], str]:
     provider = build_provider(settings, event.provider_preference, event.model_hint)
-    statement = submission_query()
-    submissions = session.scalars(statement).all()
+    submissions = repository.list_submissions()
+    guests = {guest.id: guest for guest in repository.list_guests()}
 
     judged = 0
     errors: list[str] = []
     for submission in submissions:
-        if submission.is_excluded:
+        guest = guests.get(submission.guest_id)
+        if guest is None:
             continue
-        if not submission.guest.eligible:
+        if submission.is_excluded or not guest.eligible:
             continue
         if not force and submission.judging_state == "judged" and submission.score is not None:
             continue
 
         try:
-            image_bytes = Path(submission.file_path).read_bytes()
+            image_bytes = storage.read_image(submission.storage_key)
             result = provider.judge(
                 image_bytes=image_bytes,
                 mime_type=submission.mime_type,
                 caption=submission.caption,
-                guest_name=submission.guest.label,
-                table_name=submission.guest.table_name,
+                guest_name=guest.label,
+                table_name=guest.table_name,
             )
-            if submission.score is None:
-                score = Score(
-                    submission=submission,
+            repository.mark_submission_judged(
+                submission.id,
+                ScoreRecord(
+                    id=f"score-{submission.id}",
+                    submission_id=submission.id,
                     provider=result.provider,
                     model_name=result.model_name,
                     total_score=result.total_score,
@@ -237,47 +164,34 @@ def judge_submissions(
                     wedding_mood_score=result.wedding_mood,
                     summary=result.summary,
                     raw_payload=result.raw_payload,
-                )
-                session.add(score)
-            else:
-                submission.score.provider = result.provider
-                submission.score.model_name = result.model_name
-                submission.score.total_score = result.total_score
-                submission.score.composition_score = result.composition
-                submission.score.emotion_score = result.emotion
-                submission.score.story_score = result.story
-                submission.score.couple_focus_score = result.couple_focus
-                submission.score.wedding_mood_score = result.wedding_mood
-                submission.score.summary = result.summary
-                submission.score.raw_payload = result.raw_payload
-            submission.judging_state = "judged"
-            submission.judge_error = None
+                    judged_at=utcnow(),
+                ),
+            )
             judged += 1
         except Exception as exc:  # noqa: BLE001
-            submission.judging_state = "failed"
-            submission.judge_error = str(exc)
-            errors.append(f"{submission.guest.label}: {exc}")
+            repository.mark_submission_failed(submission.id, str(exc))
+            errors.append(f"{guest.label}: {exc}")
 
-    session.commit()
     return judged, errors, provider.display_name
 
 
-def effective_score(submission: Submission) -> float:
+def effective_score(submission: SubmissionRecord) -> float:
     if submission.score is None:
         return 0.0
     return round(submission.score.total_score + submission.admin_score_adjustment, 1)
 
 
-def leaderboard(session: Session, limit: int | None = None) -> list[Submission]:
-    submissions = session.scalars(submission_query()).all()
-    filtered = [
-        item
-        for item in submissions
-        if not item.is_excluded
-        and item.guest.eligible
-        and item.score is not None
-        and item.judging_state == "judged"
-    ]
+def leaderboard(repository: ContestRepository, limit: int | None = None) -> list[SubmissionRecord]:
+    guests = {guest.id: guest for guest in repository.list_guests()}
+    submissions = repository.list_submissions()
+    filtered = []
+    for item in submissions:
+        guest = guests.get(item.guest_id)
+        if guest is None:
+            continue
+        if item.is_excluded or not guest.eligible or item.score is None or item.judging_state != "judged":
+            continue
+        filtered.append(item)
     ordered = sorted(
         filtered,
         key=lambda item: (
@@ -302,9 +216,9 @@ def provider_status(settings: Settings) -> dict[str, str]:
     }
 
 
-def event_stats(session: Session) -> dict[str, int]:
-    guests = session.scalars(select(Guest)).all()
-    submissions = session.scalars(select(Submission)).all()
+def event_stats(repository: ContestRepository) -> dict[str, int]:
+    guests = repository.list_guests()
+    submissions = repository.list_submissions()
     scored = sum(1 for item in submissions if item.score is not None and item.judging_state == "judged")
     return {
         "guests": len(guests),
@@ -316,8 +230,3 @@ def event_stats(session: Session) -> dict[str, int]:
 
 def provider_choices() -> list[str]:
     return provider_options()
-
-
-def cleanup_upload(path: str) -> None:
-    if path and os.path.exists(path):
-        os.unlink(path)
