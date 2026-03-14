@@ -75,6 +75,7 @@ class GuestRecord:
     id: str
     name: str
     display_name: str | None
+    side: str
     table_name: str | None
     group_type: str
     eligible: bool

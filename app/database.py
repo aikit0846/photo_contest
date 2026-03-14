@@ -30,6 +30,14 @@ def init_db() -> None:
     from app import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    if settings.database_url.startswith("sqlite"):
+        with engine.begin() as connection:
+            columns = connection.exec_driver_sql("PRAGMA table_info(guests)").fetchall()
+            column_names = {column[1] for column in columns}
+            if "side" not in column_names:
+                connection.exec_driver_sql(
+                    "ALTER TABLE guests ADD COLUMN side VARCHAR(20) DEFAULT 'groom' NOT NULL",
+                )
 
 
 def get_db() -> Generator[Session, None, None]:

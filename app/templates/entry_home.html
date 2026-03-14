@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}参加者選択 | {{ event.title }}{% endblock %}
+{% block content %}
+<main class="stack large-gap">
+  <section class="panel">
+    <p class="kicker">Entry</p>
+    <h2>お名前のグループを選んでください</h2>
+    {% if remembered_guest %}
+    <div class="entry-continue">
+      <a class="button button-primary" href="/join/{{ remembered_guest.invite_token }}">{{ remembered_guest.label }} さんとして続ける</a>
+      <a class="button button-ghost" href="/entry/reset">別の参加者を選ぶ</a>
+    </div>
+    {% endif %}
+    <div class="category-grid">
+      {% for category in categories %}
+      <a class="category-card" href="/entry/category/{{ category.key }}">{{ category.label }}</a>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

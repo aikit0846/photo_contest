@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ category_label }} | {{ event.title }}{% endblock %}
+{% block content %}
+<main class="stack large-gap">
+  <section class="panel">
+    <p class="kicker">Entry</p>
+    <h2>{{ category_label }}</h2>
+    <div class="entry-continue">
+      <a class="button button-ghost" href="/entry">戻る</a>
+    </div>
+    <div class="name-list">
+      {% for guest in guests %}
+      <form action="/entry/select/{{ guest.id }}" method="post">
+        <button class="name-button" type="submit">{{ guest.label }}</button>
+      </form>
+      {% else %}
+      <p>このグループにはまだゲストが登録されていません。</p>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

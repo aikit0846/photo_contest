@@ -20,6 +20,38 @@ from app.services.providers import provider_options
 from app.storage import BaseImageStorage
 
 
+ENTRY_CATEGORY_OPTIONS = [
+    {"key": "groom-friend", "label": "新郎友人"},
+    {"key": "bride-friend", "label": "新婦友人"},
+    {"key": "groom-family", "label": "新郎親族"},
+    {"key": "bride-family", "label": "新婦親族"},
+]
+
+
+def common_entry_url(settings: Settings) -> str:
+    return f"{settings.app_url.rstrip('/')}/entry"
+
+
+def entry_category_options() -> list[dict[str, str]]:
+    return ENTRY_CATEGORY_OPTIONS
+
+
+def entry_category_label(category_key: str) -> str:
+    for option in ENTRY_CATEGORY_OPTIONS:
+        if option["key"] == category_key:
+            return option["label"]
+    return "該当ゲスト"
+
+
+def category_for_guest(guest: GuestRecord) -> str:
+    return f"{guest.side}-{guest.group_type}"
+
+
+def guests_for_category(repository: ContestRepository, category_key: str) -> list[GuestRecord]:
+    guests = [guest for guest in repository.list_guests() if category_for_guest(guest) == category_key]
+    return sorted(guests, key=lambda guest: guest.name)
+
+
 def default_model_hint(settings: Settings, provider_name: str) -> str | None:
     if provider_name == "gemini":
         return settings.google_model
@@ -41,6 +73,7 @@ def create_guest(
     repository: ContestRepository,
     *,
     name: str,
+    side: str,
     table_name: str | None,
     group_type: str,
     eligible: bool,
@@ -49,6 +82,7 @@ def create_guest(
 ) -> GuestRecord:
     return repository.create_guest(
         name=name,
+        side=side,
         table_name=table_name,
         group_type=group_type,
         eligible=eligible,

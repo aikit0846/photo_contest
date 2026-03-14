@@ -32,7 +32,10 @@ def _dt(value: datetime | str | None) -> datetime:
 
 
 def _sort_guests(guests: Iterable[GuestRecord]) -> list[GuestRecord]:
-    return sorted(guests, key=lambda guest: ((guest.table_name or "zzzz").lower(), guest.name.lower()))
+    return sorted(
+        guests,
+        key=lambda guest: (guest.side.lower(), guest.group_type.lower(), guest.name.lower()),
+    )
 
 
 def _sort_submissions(submissions: Iterable[SubmissionRecord]) -> list[SubmissionRecord]:
@@ -54,6 +57,7 @@ class ContestRepository(Protocol):
         self,
         *,
         name: str,
+        side: str,
         table_name: str | None,
         group_type: str,
         eligible: bool,
@@ -115,6 +119,7 @@ class SqliteContestRepository:
             id=str(value.id),
             name=value.name,
             display_name=value.display_name,
+            side=value.side,
             table_name=value.table_name,
             group_type=value.group_type,
             eligible=value.eligible,
@@ -186,6 +191,7 @@ class SqliteContestRepository:
             id=str(value.id),
             name=value.name,
             display_name=value.display_name,
+            side=value.side,
             table_name=value.table_name,
             group_type=value.group_type,
             eligible=value.eligible,
@@ -241,6 +247,7 @@ class SqliteContestRepository:
         self,
         *,
         name: str,
+        side: str,
         table_name: str | None,
         group_type: str,
         eligible: bool,
@@ -251,6 +258,7 @@ class SqliteContestRepository:
             guest = sql_models.Guest(
                 name=name.strip(),
                 display_name=(display_name or "").strip() or None,
+                side=side,
                 table_name=(table_name or "").strip() or None,
                 group_type=group_type,
                 eligible=eligible,
@@ -558,6 +566,7 @@ class FirestoreContestRepository:
             id=document_id,
             name=data["name"],
             display_name=data.get("display_name"),
+            side=data.get("side", "groom"),
             table_name=data.get("table_name"),
             group_type=data.get("group_type", "friend"),
             eligible=bool(data.get("eligible", True)),
@@ -620,6 +629,7 @@ class FirestoreContestRepository:
         self,
         *,
         name: str,
+        side: str,
         table_name: str | None,
         group_type: str,
         eligible: bool,
@@ -631,6 +641,7 @@ class FirestoreContestRepository:
         payload = {
             "name": name.strip(),
             "display_name": (display_name or "").strip() or None,
+            "side": side,
             "table_name": (table_name or "").strip() or None,
             "group_type": group_type,
             "eligible": eligible,

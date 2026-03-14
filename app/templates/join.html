@@ -5,7 +5,9 @@
   <section class="panel">
     <p class="kicker">Guest Entry</p>
     <h2>{{ guest.label }} さんのエントリー</h2>
-    <p>テーブル: {{ guest.table_name or "未設定" }} / 区分: {{ "ご友人" if guest.group_type == "friend" else "ご親族" }}</p>
+    <div class="hero-actions">
+      <a class="button button-ghost" href="/entry/reset">別の参加者として入り直す</a>
+    </div>
     {% if event.submissions_open %}
     <p>お気に入りの 1 枚をアップロードしてください。締切までは何度でも差し替え可能です。</p>
     <p class="helper-text">通信が不安定でも通りやすいよう、対応ブラウザではアップロード前に自動で軽量化します。</p>

@@ -7,12 +7,12 @@ from app.storage import get_storage
 
 
 SAMPLE_GUESTS = [
-    ("新郎友人A", "A卓", "friend", True),
-    ("新郎友人B", "A卓", "friend", True),
-    ("新婦友人A", "B卓", "friend", True),
-    ("新婦友人B", "B卓", "friend", True),
-    ("叔母", "親族卓", "family", False),
-    ("従兄弟", "親族卓", "family", False),
+    ("新郎友人A", "groom", "A卓", "friend", True),
+    ("新郎友人B", "groom", "A卓", "friend", True),
+    ("新婦友人A", "bride", "B卓", "friend", True),
+    ("新婦友人B", "bride", "B卓", "friend", True),
+    ("叔母", "groom", "親族卓", "family", False),
+    ("従兄弟", "bride", "親族卓", "family", False),
 ]
 
 
@@ -24,10 +24,11 @@ def main() -> None:
         init_db()
     repository = get_repository()
     get_event(repository, settings)
-    for name, table_name, group_type, eligible in SAMPLE_GUESTS:
+    for name, side, table_name, group_type, eligible in SAMPLE_GUESTS:
         create_guest(
             repository,
             name=name,
+            side=side,
             table_name=table_name,
             group_type=group_type,
             eligible=eligible,

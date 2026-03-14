@@ -5,6 +5,7 @@ import io
 import qrcode
 import qrcode.image.svg
 from fastapi import APIRouter
+from fastapi import Cookie
 from fastapi import Depends
 from fastapi import File
 from fastapi import Form
@@ -20,6 +21,10 @@ from app.config import Settings
 from app.config import get_settings
 from app.repositories import ContestRepository
 from app.repositories import get_repository
+from app.services.contest import common_entry_url
+from app.services.contest import entry_category_label
+from app.services.contest import entry_category_options
+from app.services.contest import guests_for_category
 from app.services.contest import invite_url
 from app.services.contest import leaderboard
 from app.services.contest import save_submission
@@ -30,6 +35,7 @@ from app.storage import get_storage
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+REMEMBERED_GUEST_COOKIE = "remembered_guest_token"
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -62,7 +68,7 @@ def join_page(
     guest = repository.get_guest_by_token(token)
     if guest is None:
         raise HTTPException(status_code=404, detail="Invite link not found.")
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "join.html",
         {
             "request": request,
@@ -74,6 +80,14 @@ def join_page(
             "error": request.query_params.get("error"),
         },
     )
+    response.set_cookie(
+        REMEMBERED_GUEST_COOKIE,
+        guest.invite_token,
+        max_age=60 * 60 * 24 * 30,
+        httponly=False,
+        samesite="lax",
+    )
+    return response
 
 
 @router.post("/join/{token}")
@@ -132,6 +146,96 @@ def guest_qr(
     buffer = io.BytesIO()
     image.save(buffer)
     return Response(content=buffer.getvalue(), media_type="image/svg+xml")
+
+
+@router.get("/entry", response_class=HTMLResponse)
+def entry_home(
+    request: Request,
+    remembered_guest_token: str | None = Cookie(default=None, alias=REMEMBERED_GUEST_COOKIE),
+    repository: ContestRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> HTMLResponse:
+    event = get_event(repository, settings)
+    remembered_guest = (
+        repository.get_guest_by_token(remembered_guest_token) if remembered_guest_token else None
+    )
+    return templates.TemplateResponse(
+        "entry_home.html",
+        {
+            "request": request,
+            "event": event,
+            "remembered_guest": remembered_guest,
+            "categories": entry_category_options(),
+            "message": request.query_params.get("message"),
+            "error": request.query_params.get("error"),
+        },
+    )
+
+
+@router.get("/entry/reset")
+def reset_entry() -> RedirectResponse:
+    response = RedirectResponse("/entry?message=別の参加者として選び直せます。", status_code=303)
+    response.delete_cookie(REMEMBERED_GUEST_COOKIE)
+    return response
+
+
+@router.get("/entry/qr.svg")
+def common_entry_qr(settings: Settings = Depends(get_settings)) -> Response:
+    qr = qrcode.QRCode(
+        border=1,
+        box_size=8,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        image_factory=qrcode.image.svg.SvgPathImage,
+    )
+    qr.add_data(common_entry_url(settings))
+    qr.make(fit=True)
+    image = qr.make_image()
+    buffer = io.BytesIO()
+    image.save(buffer)
+    return Response(content=buffer.getvalue(), media_type="image/svg+xml")
+
+
+@router.get("/entry/category/{category_key}", response_class=HTMLResponse)
+def entry_category(
+    category_key: str,
+    request: Request,
+    repository: ContestRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> HTMLResponse:
+    categories = {option["key"] for option in entry_category_options()}
+    if category_key not in categories:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    event = get_event(repository, settings)
+    guests = guests_for_category(repository, category_key)
+    return templates.TemplateResponse(
+        "entry_category.html",
+        {
+            "request": request,
+            "event": event,
+            "category_key": category_key,
+            "category_label": entry_category_label(category_key),
+            "guests": guests,
+        },
+    )
+
+
+@router.post("/entry/select/{guest_id}")
+def select_entry_guest(
+    guest_id: str,
+    repository: ContestRepository = Depends(get_repository),
+) -> RedirectResponse:
+    guest = repository.get_guest_by_id(guest_id)
+    if guest is None:
+        raise HTTPException(status_code=404, detail="Guest not found.")
+    response = RedirectResponse(f"/join/{guest.invite_token}", status_code=303)
+    response.set_cookie(
+        REMEMBERED_GUEST_COOKIE,
+        guest.invite_token,
+        max_age=60 * 60 * 24 * 30,
+        httponly=False,
+        samesite="lax",
+    )
+    return response
 
 
 @router.get("/submissions/{submission_id}/image")

@@ -90,6 +90,7 @@ def update_provider(
 def add_guest(
     name: str = Form(...),
     display_name: str | None = Form(default=None),
+    side: str = Form(default="groom"),
     table_name: str | None = Form(default=None),
     group_type: str = Form(default="friend"),
     eligible: str | None = Form(default=None),
@@ -100,6 +101,7 @@ def add_guest(
         repository,
         name=name,
         display_name=display_name,
+        side=side,
         table_name=table_name,
         group_type=group_type,
         eligible=eligible == "on",

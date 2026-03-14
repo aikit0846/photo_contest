@@ -80,6 +80,13 @@
           <input type="text" name="display_name" placeholder="ニックネームでも可" />
         </label>
         <label>
+          側
+          <select name="side">
+            <option value="groom">新郎側</option>
+            <option value="bride">新婦側</option>
+          </select>
+        </label>
+        <label>
           卓名
           <input type="text" name="table_name" placeholder="A 卓 / 新郎友人卓 など" />
         </label>
@@ -123,15 +130,30 @@
   </section>
 
   <section class="panel">
-    <p class="kicker">Invite Links</p>
-    <h2>QR コード一覧</h2>
-    <div class="guest-grid">
+      <p class="kicker">Guest Entry</p>
+      <h2>共通 QR コード</h2>
+      <div class="guest-grid">
+        <article class="guest-card">
+          <img src="/entry/qr.svg" alt="共通 QR" />
+          <div class="guest-card-body">
+            <h3>共通 QR</h3>
+            <p>受付や卓上に置くメイン導線です。</p>
+            <a class="small-link" href="/entry" target="_blank" rel="noreferrer">/entry</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <p class="kicker">Backup Links</p>
+      <h2>個別 QR コード一覧</h2>
+      <div class="guest-grid">
       {% for guest in guests %}
       <article class="guest-card">
         <img src="/guests/{{ guest.invite_token }}/qr.svg" alt="{{ guest.label }} QR" />
         <div class="guest-card-body">
           <h3>{{ guest.label }}</h3>
-          <p>{{ guest.table_name or "卓未設定" }} / {{ "対象" if guest.eligible else "対象外" }}</p>
+          <p>{{ "新郎側" if guest.side == "groom" else "新婦側" }} / {{ "対象" if guest.eligible else "対象外" }}</p>
           <a class="small-link" href="{{ invite_url(guest) }}" target="_blank" rel="noreferrer">{{ invite_url(guest) }}</a>
           <form action="/admin/guests/{{ guest.id }}/eligibility" method="post">
             <button class="button button-ghost" type="submit">
@@ -157,7 +179,7 @@
           <div class="submission-head">
             <div>
               <h3>{{ submission.guest.label }}</h3>
-              <p>{{ submission.guest.table_name or "卓未設定" }} / {{ submission.guest.group_type }}</p>
+              <p>{{ "新郎側" if submission.guest.side == "groom" else "新婦側" }} / {{ submission.guest.group_type }}</p>
             </div>
             <span class="status-pill {% if submission.is_excluded %}closed{% else %}open{% endif %}">
               {% if submission.is_excluded %}除外{% else %}{{ submission.judging_state }}{% endif %}
