@@ -1,56 +1,58 @@
-{% extends "base.html" %}
+{% extends "base_guest.html" %}
 {% block title %}エントリー | {{ event.title }}{% endblock %}
+{% block guest_heading %}{% endblock %}
+{% block guest_subtitle %}{% endblock %}
 {% block content %}
-<main class="grid two-column">
-  <section class="panel">
-    <p class="kicker">Guest Entry</p>
-    <h2>{{ guest.label }} さんのエントリー</h2>
-    <div class="hero-actions">
-      <a class="button button-ghost" href="/entry/reset">別の参加者として入り直す</a>
-    </div>
-    {% if event.submissions_open %}
-    <p>お気に入りの 1 枚をアップロードしてください。締切までは何度でも差し替え可能です。</p>
-    <p class="helper-text">通信が不安定でも通りやすいよう、対応ブラウザではアップロード前に自動で軽量化します。</p>
-    <form id="entry-form" class="stack" action="/join/{{ guest.invite_token }}" method="post" enctype="multipart/form-data" data-max-edge="{{ config.target_image_max_edge }}" data-quality="{{ config.target_image_quality }}">
-      <label>
-        写真
-        <input id="photo-input" type="file" name="photo" accept="image/*" required />
-      </label>
-      <label>
-        コメント
-        <textarea name="caption" rows="4" placeholder="この写真の見どころを一言"></textarea>
-      </label>
-      <p id="upload-status" class="helper-text" aria-live="polite"></p>
-      <button id="submit-button" class="button button-primary" type="submit">写真をエントリーする</button>
-    </form>
-    <noscript>
-      <p class="helper-text">JavaScript を使わない場合は、元画像のまま送信されます。通信が混み合う場合は数秒おいて再送してください。</p>
-    </noscript>
-    {% else %}
-    <p class="status-pill closed">現在は投稿受付を締め切っています。</p>
-    {% endif %}
-  </section>
+<section class="guest-panel">
+  <p class="guest-identity">{{ guest.label }} さん</p>
+  {% set submitted_now = message == "写真を受け付けました。締切までは差し替え可能です。" %}
 
-  <section class="panel">
-    <h2>現在の登録状況</h2>
-    {% if guest.submission %}
-    <article class="entry-card">
-      <img src="{{ guest.submission.image_url }}" alt="uploaded photo" />
-      <div class="entry-card-body">
-        <p class="rank-chip">{{ guest.submission.judging_state }}</p>
-        <p>ファイル: {{ guest.submission.original_filename }}</p>
-        <p>コメント: {{ guest.submission.caption or "なし" }}</p>
-        {% if guest.submission.score %}
-        <p>AI コメント: {{ guest.submission.score.summary }}</p>
-        {% endif %}
+  {% if event.submissions_open and submitted_now %}
+  <div class="guest-success-state">
+    <div class="guest-success-card">
+      <p class="guest-success-title">写真を受け付けました</p>
+      <p class="guest-step-copy">締切までは何度でも差し替えできます。</p>
+      <div class="guest-success-actions">
+        <button id="show-reupload-button" class="button button-ghost guest-button" type="button">別の写真に差し替える</button>
       </div>
-    </article>
-    {% else %}
-    <p>まだ投稿はありません。QR コードからこのページを開いたまま、ベストショットを選んでアップロードしてください。</p>
-    {% endif %}
-    <p class="helper-text">Safari / Chrome のどちらでも使えるシンプルなフォームです。HEIC で問題が起きる場合は iPhone 側で JPEG にして再投稿してください。</p>
-  </section>
-</main>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if event.submissions_open %}
+  <form id="entry-form" class="stack guest-form" action="/join/{{ guest.invite_token }}" method="post" enctype="multipart/form-data" data-max-edge="{{ config.target_image_max_edge }}" data-quality="{{ config.target_image_quality }}">
+    <section id="guest-step-1" class="guest-step-card" data-step-state="current">
+      <div class="guest-step-head">
+        <span class="guest-step">1</span>
+        <h2>写真をえらぶ</h2>
+      </div>
+      <p class="guest-step-copy">ボタンを押して、お気に入りの 1 枚を選んでください。</p>
+      <label class="guest-field guest-file-field">
+        <input id="photo-input" class="guest-file-input" type="file" name="photo" accept="image/*" required />
+      </label>
+    </section>
+
+    <section id="guest-step-2" class="guest-step-card guest-submit-card" data-step-state="pending">
+      <div class="guest-step-head">
+        <span class="guest-step">2</span>
+        <h2>最後に送る</h2>
+      </div>
+      <p id="submit-help" class="guest-step-copy">写真をえらぶと、ここに表示されます。</p>
+      <div id="guest-preview-placeholder" class="guest-preview-placeholder">まだ写真は選ばれていません</div>
+      <div id="guest-preview" class="guest-preview" hidden>
+        <img id="guest-preview-image" alt="選んだ写真のプレビュー" />
+      </div>
+      <p id="upload-status" class="guest-status" aria-live="polite"></p>
+      <button id="submit-button" class="button button-primary guest-submit" type="submit">この写真を送る</button>
+    </section>
+  </form>
+  {% else %}
+  <div class="guest-callout guest-callout-closed">
+    <p class="guest-callout-title">現在は受付を終了しています</p>
+  </div>
+  {% endif %}
+
+</section>
 {% if event.submissions_open %}
 <script>
   (() => {
@@ -58,6 +60,14 @@
     const input = document.getElementById("photo-input");
     const button = document.getElementById("submit-button");
     const status = document.getElementById("upload-status");
+    const submitHelp = document.getElementById("submit-help");
+    const preview = document.getElementById("guest-preview");
+    const previewImage = document.getElementById("guest-preview-image");
+    const previewPlaceholder = document.getElementById("guest-preview-placeholder");
+    const step1 = document.getElementById("guest-step-1");
+    const step2 = document.getElementById("guest-step-2");
+    const showReuploadButton = document.getElementById("show-reupload-button");
+    const submittedNow = {{ "true" if submitted_now else "false" }};
     if (!form || !input || !button || !status || !window.FileReader || !window.fetch || !window.FormData) {
       return;
     }
@@ -65,9 +75,62 @@
     const maxEdge = Number(form.dataset.maxEdge || 1600);
     const quality = Math.min(0.95, Math.max(0.5, Number(form.dataset.quality || 80) / 100));
     let submitting = false;
+    button.disabled = true;
+
+    if (submittedNow) {
+      form.hidden = true;
+    }
 
     function setStatus(message) {
       status.textContent = message;
+    }
+
+    function setStepState(step, state) {
+      if (step) {
+        step.dataset.stepState = state;
+      }
+    }
+
+    function resetSteps() {
+      setStepState(step1, "current");
+      setStepState(step2, "pending");
+    }
+
+    function activatePostSelectionSteps() {
+      setStepState(step1, "complete");
+      setStepState(step2, "current");
+    }
+
+    function scrollToSubmitStep() {
+      if (!step2 || !(window.matchMedia && window.matchMedia("(max-width: 900px)").matches)) {
+        return;
+      }
+      window.setTimeout(() => {
+        const top = step2.getBoundingClientRect().top + window.scrollY - 12;
+        window.scrollTo({ top, behavior: "smooth" });
+      }, 80);
+    }
+
+    function showPreview(file) {
+      if (!preview || !previewImage || !file.type.startsWith("image/")) {
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        previewImage.src = String(reader.result || "");
+        preview.hidden = false;
+        if (previewPlaceholder) {
+          previewPlaceholder.hidden = true;
+        }
+        if (submitHelp) {
+          submitHelp.textContent = "写真を確認したら、下のボタンを押してください。";
+        }
+        previewImage.onload = () => {
+          scrollToSubmitStep();
+          previewImage.onload = null;
+        };
+      };
+      reader.readAsDataURL(file);
     }
 
     async function compressImage(file) {
@@ -104,6 +167,39 @@
       return new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
     }
 
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (!file) {
+        if (preview) {
+          preview.hidden = true;
+        }
+        if (previewPlaceholder) {
+          previewPlaceholder.hidden = false;
+        }
+        if (submitHelp) {
+          submitHelp.textContent = "写真をえらぶと、ここに表示されます。";
+        }
+        resetSteps();
+        button.disabled = true;
+        return;
+      }
+      showPreview(file);
+      button.disabled = false;
+      activatePostSelectionSteps();
+      setStatus("写真が選ばれました。内容を確認して送ってください。");
+      scrollToSubmitStep();
+    });
+
+    if (showReuploadButton) {
+      showReuploadButton.addEventListener("click", () => {
+        form.hidden = false;
+        showReuploadButton.closest(".guest-success-state").hidden = true;
+        window.setTimeout(() => {
+          step1.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 120);
+      });
+    }
+
     form.addEventListener("submit", async (event) => {
       if (submitting) {
         event.preventDefault();
@@ -118,6 +214,7 @@
       event.preventDefault();
       submitting = true;
       button.disabled = true;
+      setStepState(step2, "current");
 
       try {
         setStatus("写真を整えてから送信しています...");
@@ -144,7 +241,7 @@
         throw new Error("Upload failed");
       } catch (error) {
         console.error(error);
-        setStatus("送信に失敗しました。通信状況を確認してもう一度お試しください。");
+        setStatus("送信できませんでした。少し待ってもう一度お試しください。");
         button.disabled = false;
         submitting = false;
       }
@@ -152,4 +249,9 @@
   })();
 </script>
 {% endif %}
+{% endblock %}
+{% block guest_footer_actions %}
+<div class="guest-secondary-action guest-secondary-action-bottom">
+  <a href="/entry/reset">別の参加者として入り直す</a>
+</div>
 {% endblock %}

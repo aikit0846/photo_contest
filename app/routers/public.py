@@ -68,6 +68,9 @@ def join_page(
     guest = repository.get_guest_by_token(token)
     if guest is None:
         raise HTTPException(status_code=404, detail="Invite link not found.")
+    message = request.query_params.get("message")
+    error = request.query_params.get("error")
+    success_message = "写真を受け付けました。締切までは差し替え可能です。"
     response = templates.TemplateResponse(
         "join.html",
         {
@@ -76,8 +79,9 @@ def join_page(
             "guest": guest,
             "invite_url": invite_url(settings, guest),
             "config": settings,
-            "message": request.query_params.get("message"),
-            "error": request.query_params.get("error"),
+            "message": message,
+            "error": error,
+            "hide_flash": message == success_message and not error,
         },
     )
     response.set_cookie(

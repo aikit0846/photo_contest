@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}写真コンテスト{% endblock %}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="guest-body">
+    <main class="guest-shell">
+      <header class="guest-header">
+        <p class="guest-badge">AI 写真コンテスト</p>
+        <h1>{% block guest_heading %}写真を送る{% endblock %}</h1>
+        <p class="guest-subtitle">{% block guest_subtitle %}かんたんな操作で投稿できます。{% endblock %}</p>
+      </header>
+
+      {% if message and not hide_flash %}
+      <div class="flash flash-success">{{ message }}</div>
+      {% endif %}
+      {% if error and not hide_flash %}
+      <div class="flash flash-error">{{ error }}</div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+
+      <section class="guest-help">
+        <p>うまくいかないときは、近くのスタッフにお声がけください。</p>
+      </section>
+
+      {% block guest_footer_actions %}{% endblock %}
+    </main>
+  </body>
+</html>

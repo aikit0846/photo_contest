@@ -144,30 +144,6 @@
       </div>
     </section>
 
-    <section class="panel">
-      <p class="kicker">Backup Links</p>
-      <h2>個別 QR コード一覧</h2>
-      <div class="guest-grid">
-      {% for guest in guests %}
-      <article class="guest-card">
-        <img src="/guests/{{ guest.invite_token }}/qr.svg" alt="{{ guest.label }} QR" />
-        <div class="guest-card-body">
-          <h3>{{ guest.label }}</h3>
-          <p>{{ "新郎側" if guest.side == "groom" else "新婦側" }} / {{ "対象" if guest.eligible else "対象外" }}</p>
-          <a class="small-link" href="{{ invite_url(guest) }}" target="_blank" rel="noreferrer">{{ invite_url(guest) }}</a>
-          <form action="/admin/guests/{{ guest.id }}/eligibility" method="post">
-            <button class="button button-ghost" type="submit">
-              {% if guest.eligible %}対象外にする{% else %}対象に戻す{% endif %}
-            </button>
-          </form>
-        </div>
-      </article>
-      {% else %}
-      <p>まだゲストが登録されていません。</p>
-      {% endfor %}
-    </div>
-  </section>
-
   <section class="panel">
     <p class="kicker">Submissions</p>
     <h2>投稿一覧</h2>

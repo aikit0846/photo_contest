@@ -1,22 +1,20 @@
-{% extends "base.html" %}
+{% extends "base_guest.html" %}
 {% block title %}{{ category_label }} | {{ event.title }}{% endblock %}
+{% block guest_heading %}ご自身のお名前を押してください{% endblock %}
+{% block guest_subtitle %}{{ category_label }} の一覧です。{% endblock %}
 {% block content %}
-<main class="stack large-gap">
-  <section class="panel">
-    <p class="kicker">Entry</p>
-    <h2>{{ category_label }}</h2>
-    <div class="entry-continue">
-      <a class="button button-ghost" href="/entry">戻る</a>
-    </div>
-    <div class="name-list">
-      {% for guest in guests %}
-      <form action="/entry/select/{{ guest.id }}" method="post">
-        <button class="name-button" type="submit">{{ guest.label }}</button>
-      </form>
-      {% else %}
-      <p>このグループにはまだゲストが登録されていません。</p>
-      {% endfor %}
-    </div>
-  </section>
-</main>
+<section class="guest-panel">
+  <div class="entry-continue">
+    <a class="button button-ghost guest-button" href="/entry">前の画面に戻る</a>
+  </div>
+  <div class="name-list">
+    {% for guest in guests %}
+    <form action="/entry/select/{{ guest.id }}" method="post">
+      <button class="name-button" type="submit">{{ guest.label }}</button>
+    </form>
+    {% else %}
+    <p class="guest-empty">このグループにはまだ登録がありません。</p>
+    {% endfor %}
+  </div>
+</section>
 {% endblock %}

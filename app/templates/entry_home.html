@@ -1,21 +1,23 @@
-{% extends "base.html" %}
+{% extends "base_guest.html" %}
 {% block title %}参加者選択 | {{ event.title }}{% endblock %}
+{% block guest_heading %}まずはグループを選んでください{% endblock %}
+{% block guest_subtitle %}あてはまるボタンを 1 つ押してください。{% endblock %}
 {% block content %}
-<main class="stack large-gap">
-  <section class="panel">
-    <p class="kicker">Entry</p>
-    <h2>お名前のグループを選んでください</h2>
-    {% if remembered_guest %}
+<section class="guest-panel">
+  {% if remembered_guest %}
+  <div class="guest-callout">
+    <p class="guest-callout-title">前回の続きから開けます</p>
     <div class="entry-continue">
-      <a class="button button-primary" href="/join/{{ remembered_guest.invite_token }}">{{ remembered_guest.label }} さんとして続ける</a>
-      <a class="button button-ghost" href="/entry/reset">別の参加者を選ぶ</a>
+      <a class="button button-primary guest-button" href="/join/{{ remembered_guest.invite_token }}">{{ remembered_guest.label }} さんとして続ける</a>
+      <a class="button button-ghost guest-button" href="/entry/reset">別の参加者を選ぶ</a>
     </div>
-    {% endif %}
-    <div class="category-grid">
-      {% for category in categories %}
-      <a class="category-card" href="/entry/category/{{ category.key }}">{{ category.label }}</a>
-      {% endfor %}
-    </div>
-  </section>
-</main>
+  </div>
+  {% endif %}
+
+  <div class="category-grid">
+    {% for category in categories %}
+    <a class="category-card" href="/entry/category/{{ category.key }}">{{ category.label }}</a>
+    {% endfor %}
+  </div>
+</section>
 {% endblock %}
