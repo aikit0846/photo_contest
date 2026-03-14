@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Admin | {{ event.title }}{% endblock %}
 {% block content %}
+{% include "admin_nav.html" %}
 <main class="stack large-gap">
   <section class="grid two-column">
     <article class="panel">
       <p class="kicker">Event Control</p>
-      <h2>運用ステータス</h2>
+      <h2>当日運用</h2>
       <div class="stats-grid">
         <div class="stat-card">
           <span>ゲスト数</span>
@@ -68,48 +69,6 @@
 
   <section class="grid two-column">
     <article class="panel">
-      <p class="kicker">Guest Setup</p>
-      <h2>ゲストを追加</h2>
-      <form class="stack" action="/admin/guests" method="post">
-        <label>
-          氏名
-          <input type="text" name="name" required />
-        </label>
-        <label>
-          表示名
-          <input type="text" name="display_name" placeholder="ニックネームでも可" />
-        </label>
-        <label>
-          側
-          <select name="side">
-            <option value="groom">新郎側</option>
-            <option value="bride">新婦側</option>
-          </select>
-        </label>
-        <label>
-          卓名
-          <input type="text" name="table_name" placeholder="A 卓 / 新郎友人卓 など" />
-        </label>
-        <label>
-          区分
-          <select name="group_type">
-            <option value="friend">友人</option>
-            <option value="family">親族</option>
-          </select>
-        </label>
-        <label class="inline-check">
-          <input type="checkbox" name="eligible" checked />
-          ランキング対象に含める
-        </label>
-        <label>
-          メモ
-          <textarea name="notes" rows="3"></textarea>
-        </label>
-        <button class="button button-primary" type="submit">ゲストを登録</button>
-      </form>
-    </article>
-
-    <article class="panel">
       <p class="kicker">Leaderboard</p>
       <h2>暫定ランキング</h2>
       {% if top_entries %}
@@ -127,9 +86,8 @@
       <p>採点済みの投稿がまだありません。</p>
       {% endif %}
     </article>
-  </section>
 
-  <section class="panel">
+    <article class="panel">
       <p class="kicker">Guest Entry</p>
       <h2>共通 QR コード</h2>
       <div class="guest-grid">
@@ -142,12 +100,13 @@
           </div>
         </article>
       </div>
-    </section>
+    </article>
+  </section>
 
   <section class="panel">
     <p class="kicker">Submissions</p>
     <h2>投稿一覧</h2>
-    <div class="submission-list">
+    <div class="submission-list submission-grid">
       {% for submission in submissions %}
       <article class="submission-card">
         <img src="{{ submission.image_url }}" alt="{{ submission.guest.label }}" />
@@ -161,7 +120,6 @@
               {% if submission.is_excluded %}除外{% else %}{{ submission.judging_state }}{% endif %}
             </span>
           </div>
-          <p>{{ submission.caption or "コメントなし" }}</p>
           {% if submission.score %}
           <p><strong>{{ effective_score(submission) }} 点</strong> / {{ submission.score.summary }}</p>
           {% endif %}

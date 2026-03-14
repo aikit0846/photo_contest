@@ -14,11 +14,11 @@ from app.config import Settings
 from app.config import get_settings
 from app.repositories import ContestRepository
 from app.repositories import get_repository
+from app.services.contest import common_entry_url
 from app.services.contest import create_guest
 from app.services.contest import effective_score
 from app.services.contest import event_stats
 from app.services.contest import get_event
-from app.services.contest import invite_url
 from app.services.contest import judge_submissions
 from app.services.contest import leaderboard
 from app.services.contest import provider_choices
@@ -38,22 +38,66 @@ def dashboard(
     settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
     event = get_event(repository, settings)
-    guests = repository.list_guests()
     submissions = repository.list_submissions()
     top_entries = leaderboard(repository, limit=10)
     return templates.TemplateResponse(
-        "admin.html",
+        "admin_operations.html",
         {
             "request": request,
             "event": event,
-            "guests": guests,
             "submissions": submissions,
             "top_entries": top_entries,
-            "invite_url": lambda guest: invite_url(settings, guest),
             "stats": event_stats(repository),
             "provider_choices": provider_choices(),
             "provider_status": provider_status(settings),
             "effective_score": effective_score,
+            "admin_section": "operations",
+            "message": request.query_params.get("message"),
+            "error": request.query_params.get("error"),
+        },
+    )
+
+
+@router.get("/guests", response_class=HTMLResponse)
+def guests_page(
+    request: Request,
+    repository: ContestRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> HTMLResponse:
+    event = get_event(repository, settings)
+    guests = repository.list_guests()
+    return templates.TemplateResponse(
+        "admin_guests.html",
+        {
+            "request": request,
+            "event": event,
+            "guests": guests,
+            "common_entry_url": common_entry_url(settings),
+            "admin_section": "guests",
+            "message": request.query_params.get("message"),
+            "error": request.query_params.get("error"),
+        },
+    )
+
+
+@router.get("/guests/{guest_id}", response_class=HTMLResponse)
+def edit_guest_page(
+    guest_id: str,
+    request: Request,
+    repository: ContestRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> HTMLResponse:
+    event = get_event(repository, settings)
+    guest = repository.get_guest_by_id(guest_id)
+    if guest is None:
+        raise HTTPException(status_code=404, detail="Guest not found.")
+    return templates.TemplateResponse(
+        "admin_guest_edit.html",
+        {
+            "request": request,
+            "event": event,
+            "guest": guest,
+            "admin_section": "guests",
             "message": request.query_params.get("message"),
             "error": request.query_params.get("error"),
         },
@@ -107,7 +151,7 @@ def add_guest(
         eligible=eligible == "on",
         notes=notes,
     )
-    return RedirectResponse("/admin?message=ゲストを追加しました。", status_code=303)
+    return RedirectResponse("/admin/guests?message=ゲストを追加しました。", status_code=303)
 
 
 @router.post("/guests/{guest_id}/eligibility")
@@ -120,7 +164,50 @@ def toggle_guest_eligibility(
         raise HTTPException(status_code=404, detail="Guest not found.")
     updated = repository.set_guest_eligibility(guest_id, not guest.eligible)
     state = "抽選対象" if updated.eligible else "対象外"
-    return RedirectResponse(f"/admin?message={guest.label} を{state}にしました。", status_code=303)
+    return RedirectResponse(f"/admin/guests?message={guest.label} を{state}にしました。", status_code=303)
+
+
+@router.post("/guests/{guest_id}/update")
+def update_guest(
+    guest_id: str,
+    name: str = Form(...),
+    display_name: str | None = Form(default=None),
+    side: str = Form(default="groom"),
+    table_name: str | None = Form(default=None),
+    group_type: str = Form(default="friend"),
+    eligible: str | None = Form(default=None),
+    notes: str | None = Form(default=None),
+    repository: ContestRepository = Depends(get_repository),
+) -> RedirectResponse:
+    guest = repository.get_guest_by_id(guest_id)
+    if guest is None:
+        raise HTTPException(status_code=404, detail="Guest not found.")
+    repository.update_guest(
+        guest_id,
+        name=name,
+        display_name=display_name,
+        side=side,
+        table_name=table_name,
+        group_type=group_type,
+        eligible=eligible == "on",
+        notes=notes,
+    )
+    return RedirectResponse(f"/admin/guests?message={guest.label} を更新しました。", status_code=303)
+
+
+@router.post("/guests/{guest_id}/delete")
+def delete_guest(
+    guest_id: str,
+    repository: ContestRepository = Depends(get_repository),
+    storage: BaseImageStorage = Depends(get_storage),
+) -> RedirectResponse:
+    guest = repository.get_guest_by_id(guest_id)
+    if guest is None:
+        raise HTTPException(status_code=404, detail="Guest not found.")
+    if guest.submission is not None:
+        storage.delete_image(guest.submission.storage_key)
+    repository.delete_guest(guest_id)
+    return RedirectResponse(f"/admin/guests?message={guest.label} を削除しました。", status_code=303)
 
 
 @router.post("/submissions/judge")

@@ -73,6 +73,21 @@ class ContestRepository(Protocol):
 
     def set_guest_eligibility(self, guest_id: str, eligible: bool) -> GuestRecord: ...
 
+    def update_guest(
+        self,
+        guest_id: str,
+        *,
+        name: str,
+        side: str,
+        table_name: str | None,
+        group_type: str,
+        eligible: bool,
+        display_name: str | None = None,
+        notes: str | None = None,
+    ) -> GuestRecord: ...
+
+    def delete_guest(self, guest_id: str) -> None: ...
+
     def list_submissions(self) -> list[SubmissionRecord]: ...
 
     def get_submission(self, submission_id: str) -> SubmissionRecord | None: ...
@@ -316,6 +331,45 @@ class SqliteContestRepository:
                 .where(sql_models.Guest.id == guest.id)
             )
             return self._guest_record(session.scalar(statement))
+
+    def update_guest(
+        self,
+        guest_id: str,
+        *,
+        name: str,
+        side: str,
+        table_name: str | None,
+        group_type: str,
+        eligible: bool,
+        display_name: str | None = None,
+        notes: str | None = None,
+    ) -> GuestRecord:
+        with SessionLocal() as session:
+            guest = session.get(sql_models.Guest, int(guest_id))
+            if guest is None:
+                raise KeyError(guest_id)
+            guest.name = name.strip()
+            guest.display_name = (display_name or "").strip() or None
+            guest.side = side
+            guest.table_name = (table_name or "").strip() or None
+            guest.group_type = group_type
+            guest.eligible = eligible
+            guest.notes = (notes or "").strip() or None
+            session.commit()
+            statement = (
+                select(sql_models.Guest)
+                .options(joinedload(sql_models.Guest.submission).joinedload(sql_models.Submission.score))
+                .where(sql_models.Guest.id == guest.id)
+            )
+            return self._guest_record(session.scalar(statement))
+
+    def delete_guest(self, guest_id: str) -> None:
+        with SessionLocal() as session:
+            guest = session.get(sql_models.Guest, int(guest_id))
+            if guest is None:
+                raise KeyError(guest_id)
+            session.delete(guest)
+            session.commit()
 
     def list_submissions(self) -> list[SubmissionRecord]:
         with SessionLocal() as session:
@@ -702,6 +756,48 @@ class FirestoreContestRepository:
         data["updated_at"] = utcnow()
         submission = next((item for item in self.list_submissions() if item.guest_id == guest_id), None)
         return self._guest_record(guest_id, data, submission)
+
+    def update_guest(
+        self,
+        guest_id: str,
+        *,
+        name: str,
+        side: str,
+        table_name: str | None,
+        group_type: str,
+        eligible: bool,
+        display_name: str | None = None,
+        notes: str | None = None,
+    ) -> GuestRecord:
+        doc = self.guests.document(guest_id)
+        snapshot = doc.get()
+        if not snapshot.exists:
+            raise KeyError(guest_id)
+        patch = {
+            "name": name.strip(),
+            "display_name": (display_name or "").strip() or None,
+            "side": side,
+            "table_name": (table_name or "").strip() or None,
+            "group_type": group_type,
+            "eligible": eligible,
+            "notes": (notes or "").strip() or None,
+            "updated_at": utcnow(),
+        }
+        doc.set(patch, merge=True)
+        data = snapshot.to_dict()
+        data.update(patch)
+        submission = next((item for item in self.list_submissions() if item.guest_id == guest_id), None)
+        return self._guest_record(guest_id, data, submission)
+
+    def delete_guest(self, guest_id: str) -> None:
+        snapshot = self.guests.document(guest_id).get()
+        if not snapshot.exists:
+            raise KeyError(guest_id)
+        existing_submission = self._submission_for_guest(guest_id)
+        if existing_submission is not None:
+            submission_id, _payload = existing_submission
+            self.submissions.document(submission_id).delete()
+        self.guests.document(guest_id).delete()
 
     def list_submissions(self) -> list[SubmissionRecord]:
         guest_snapshots = {snapshot.id: snapshot.to_dict() for snapshot in self.guests.stream()}

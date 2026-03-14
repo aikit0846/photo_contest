@@ -43,7 +43,10 @@ uv run uvicorn app.main:app --reload
 
 ブラウザで [http://127.0.0.1:8000](http://127.0.0.1:8000) を開いてください。
 
-管理画面は [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin) です。
+管理画面は用途ごとに分かれています。
+
+- 当日運用: [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin)
+- ゲスト管理: [http://127.0.0.1:8000/admin/guests](http://127.0.0.1:8000/admin/guests)
 
 `ADMIN_PASSWORD` を設定した場合、ユーザー名 `admin` の Basic 認証が有効になります。
 

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Guests | {{ event.title }}{% endblock %}
+{% block content %}
+{% include "admin_nav.html" %}
+<main class="stack large-gap">
+  <section class="grid two-column">
+    <article class="panel">
+      <p class="kicker">Guest Setup</p>
+      <h2>ゲストを追加</h2>
+      <form class="stack" action="/admin/guests" method="post">
+        <label>
+          氏名
+          <input type="text" name="name" required />
+        </label>
+        <label>
+          表示名
+          <input type="text" name="display_name" placeholder="ニックネームでも可" />
+        </label>
+        <label>
+          側
+          <select name="side">
+            <option value="groom">新郎側</option>
+            <option value="bride">新婦側</option>
+          </select>
+        </label>
+        <label>
+          卓名
+          <input type="text" name="table_name" placeholder="A 卓 / 新郎友人卓 など" />
+        </label>
+        <label>
+          区分
+          <select name="group_type">
+            <option value="friend">友人</option>
+            <option value="family">親族</option>
+          </select>
+        </label>
+        <label class="inline-check">
+          <input type="checkbox" name="eligible" checked />
+          ランキング対象に含める
+        </label>
+        <label>
+          メモ
+          <textarea name="notes" rows="3"></textarea>
+        </label>
+        <button class="button button-primary" type="submit">ゲストを登録</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <p class="kicker">Guest Entry</p>
+      <h2>共通 QR コード</h2>
+      <div class="guest-grid">
+        <article class="guest-card">
+          <img src="/entry/qr.svg" alt="共通 QR" />
+          <div class="guest-card-body">
+            <h3>共通 QR</h3>
+            <p>受付や卓上に置くメイン導線です。</p>
+            <a class="small-link" href="{{ common_entry_url }}" target="_blank" rel="noreferrer">{{ common_entry_url }}</a>
+          </div>
+        </article>
+      </div>
+    </article>
+  </section>
+
+  <section class="panel">
+    <p class="kicker">Guests</p>
+    <h2>登録済みゲスト</h2>
+    <div class="guest-admin-grid">
+      {% for guest in guests %}
+      <article class="guest-admin-card">
+        <div class="guest-admin-head">
+          <div>
+            <h3>{{ guest.label }}</h3>
+            <p>{{ "新郎側" if guest.side == "groom" else "新婦側" }} / {{ "友人" if guest.group_type == "friend" else "親族" }}</p>
+          </div>
+          <span class="status-pill {% if guest.eligible %}open{% else %}closed{% endif %}">
+            {% if guest.eligible %}対象{% else %}対象外{% endif %}
+          </span>
+        </div>
+        <p>{{ guest.table_name or "卓未設定" }}</p>
+        <div class="guest-admin-actions">
+          <a class="button button-secondary" href="/admin/guests/{{ guest.id }}">編集</a>
+          <form action="/admin/guests/{{ guest.id }}/eligibility" method="post">
+            <button class="button button-ghost" type="submit">
+              {% if guest.eligible %}対象外にする{% else %}対象に戻す{% endif %}
+            </button>
+          </form>
+          <form action="/admin/guests/{{ guest.id }}/delete" method="post" onsubmit="return confirm('このゲストを削除しますか？ 投稿も一緒に削除されます。');">
+            <button class="button button-danger" type="submit">削除</button>
+          </form>
+        </div>
+      </article>
+      {% else %}
+      <p>まだゲストが登録されていません。</p>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

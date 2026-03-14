@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Edit Guest | {{ event.title }}{% endblock %}
+{% block content %}
+{% include "admin_nav.html" %}
+<main class="stack large-gap">
+  <section class="panel">
+    <p class="kicker">Guest Edit</p>
+    <h2>{{ guest.label }}</h2>
+    <form class="stack" action="/admin/guests/{{ guest.id }}/update" method="post">
+      <label>
+        氏名
+        <input type="text" name="name" value="{{ guest.name }}" required />
+      </label>
+      <label>
+        表示名
+        <input type="text" name="display_name" value="{{ guest.display_name or '' }}" />
+      </label>
+      <label>
+        側
+        <select name="side">
+          <option value="groom" {% if guest.side == "groom" %}selected{% endif %}>新郎側</option>
+          <option value="bride" {% if guest.side == "bride" %}selected{% endif %}>新婦側</option>
+        </select>
+      </label>
+      <label>
+        卓名
+        <input type="text" name="table_name" value="{{ guest.table_name or '' }}" />
+      </label>
+      <label>
+        区分
+        <select name="group_type">
+          <option value="friend" {% if guest.group_type == "friend" %}selected{% endif %}>友人</option>
+          <option value="family" {% if guest.group_type == "family" %}selected{% endif %}>親族</option>
+        </select>
+      </label>
+      <label class="inline-check">
+        <input type="checkbox" name="eligible" {% if guest.eligible %}checked{% endif %} />
+        ランキング対象に含める
+      </label>
+      <label>
+        メモ
+        <textarea name="notes" rows="3">{{ guest.notes or '' }}</textarea>
+      </label>
+      <div class="admin-form-actions">
+        <button class="button button-primary" type="submit">保存</button>
+        <a class="button button-ghost" href="/admin/guests">一覧に戻る</a>
+      </div>
+    </form>
+  </section>
+</main>
+{% endblock %}

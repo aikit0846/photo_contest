@@ -5,30 +5,393 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Presentation | {{ event.title }}</title>
     <link rel="stylesheet" href="/static/styles.css" />
-    <meta http-equiv="refresh" content="30" />
   </head>
   <body class="presentation-body">
+    <div id="confetti-layer" class="confetti-layer" aria-hidden="true"></div>
+    {% if winners %}
+    <section id="focus-stage" class="focus-stage" hidden>
+      <article id="focus-card" class="focus-card">
+        <div class="focus-content">
+          <div class="focus-image-frame">
+            <img id="focus-image" alt="" />
+          </div>
+          <div class="focus-card-body">
+            <div class="focus-meta">
+              <p id="focus-rank" class="focus-rank-badge"></p>
+              <h2 id="focus-name"></h2>
+              <p id="focus-score" class="focus-score"></p>
+            </div>
+            <p id="focus-comment" class="focus-comment"></p>
+          </div>
+        </div>
+      </article>
+    </section>
+    {% endif %}
     <main class="presentation-shell">
       <header class="presentation-header">
         <p class="eyebrow">AI Photo Contest Result</p>
         <h1>{{ event.title }}</h1>
         <p>{{ event.venue }}</p>
       </header>
-      <section class="podium">
+      {% if winners %}
+      <p id="presentation-status" class="presentation-status-hidden" aria-live="polite"></p>
+      <section id="podium" class="podium-stage">
         {% for winner in winners %}
-        <article class="podium-card rank-{{ loop.index }}">
-          <p class="podium-rank">{{ loop.index }} 位</p>
-          <img src="{{ winner.image_url }}" alt="{{ winner.guest.label }}" />
-          <div class="podium-body">
-            <h2>{{ winner.guest.label }}</h2>
-            <p class="podium-score">{{ effective_score(winner) }} pts</p>
-            <p>{{ winner.score.summary }}</p>
+        {% set rank = loop.index %}
+        {% if rank == 2 %}
+        {% set slot_class = "left" %}
+        {% elif rank == 1 %}
+        {% set slot_class = "center" %}
+        {% else %}
+        {% set slot_class = "right" %}
+        {% endif %}
+        <article class="podium-slot slot-{{ slot_class }}" data-rank="{{ rank }}">
+          <div
+            class="podium-card rank-{{ rank }}"
+            data-rank="{{ rank }}"
+            data-name="{{ winner.guest.label }}"
+            data-score="{{ effective_score(winner) }} pts"
+            data-comment="{{ winner.score.summary }}"
+            data-image="{{ winner.image_url }}"
+            data-state="hidden"
+          >
+            <div class="podium-image-frame">
+              <img src="{{ winner.image_url }}" alt="{{ winner.guest.label }}" />
+            </div>
+            <div class="podium-card-body">
+              <div class="podium-meta">
+                <h2>{{ winner.guest.label }}</h2>
+                <p class="podium-score">{{ effective_score(winner) }} pts</p>
+              </div>
+              <p class="podium-comment">{{ winner.score.summary }}</p>
+            </div>
+          </div>
+          <div class="podium-stand podium-stand-{{ rank }}">
+            <span class="podium-stand-number">{{ rank }}</span>
           </div>
         </article>
-        {% else %}
-        <p class="empty-copy">まだ結果がありません。管理画面から採点を実行してください。</p>
         {% endfor %}
       </section>
+      <section class="presentation-finale">
+        <p class="presentation-finale-en">Thank you for capturing the best moments of our day.</p>
+      </section>
+      {% else %}
+      <p class="empty-copy">まだ結果がありません。管理画面から採点を実行してください。</p>
+      {% endif %}
     </main>
+    {% if winners %}
+    <script>
+      (() => {
+        const podiumCards = Array.from(document.querySelectorAll(".podium-card"));
+        const focusStage = document.getElementById("focus-stage");
+        const focusCard = document.getElementById("focus-card");
+        const focusRank = document.getElementById("focus-rank");
+        const focusImage = document.getElementById("focus-image");
+        const focusName = document.getElementById("focus-name");
+        const focusScore = document.getElementById("focus-score");
+        const focusComment = document.getElementById("focus-comment");
+        const status = document.getElementById("presentation-status");
+        const confettiLayer = document.getElementById("confetti-layer");
+
+        const revealRanks = podiumCards
+          .map((card) => Number(card.dataset.rank))
+          .sort((a, b) => b - a);
+
+        const sequence = revealRanks.flatMap((rank) => [
+          { type: "focus", rank },
+          { type: "comment", rank },
+          { type: "settle", rank },
+        ]);
+
+        let stage = -1;
+        let typingTimer = null;
+        let typingText = "";
+        let typingIndex = 0;
+        let typingElement = null;
+        let isTyping = false;
+
+        function cardByRank(rank) {
+          return podiumCards.find((card) => Number(card.dataset.rank) === rank);
+        }
+
+        function dataForRank(rank) {
+          const card = cardByRank(rank);
+          if (!card) {
+            return null;
+          }
+          const image = card.querySelector("img");
+          const orientation = image && image.naturalHeight > image.naturalWidth * 1.05
+            ? "portrait"
+            : "landscape";
+          return {
+            rank,
+            name: card.dataset.name || "",
+            score: card.dataset.score || "",
+            comment: card.dataset.comment || "",
+            image: card.dataset.image || "",
+            orientation,
+          };
+        }
+
+        function setStatus(text) {
+          if (status) {
+            status.textContent = text;
+          }
+        }
+
+        function stopTyping() {
+          if (typingTimer) {
+            window.clearTimeout(typingTimer);
+            typingTimer = null;
+          }
+          isTyping = false;
+          if (typingElement) {
+            typingElement.classList.remove("is-typing");
+          }
+        }
+
+        function typeComment(element, text) {
+          stopTyping();
+          typingElement = element;
+          typingText = text;
+          typingIndex = 0;
+          element.textContent = "";
+          element.classList.add("is-typing");
+          isTyping = true;
+
+          const tick = () => {
+            element.textContent = text.slice(0, typingIndex);
+            if (typingIndex < text.length) {
+              typingIndex += 1;
+              typingTimer = window.setTimeout(tick, 32);
+            } else {
+              element.classList.remove("is-typing");
+              typingTimer = null;
+              isTyping = false;
+            }
+          };
+          tick();
+        }
+
+        function finishTypingImmediately() {
+          if (!isTyping || !typingElement) {
+            return false;
+          }
+          stopTyping();
+          typingElement.textContent = typingText;
+          return true;
+        }
+
+        function clearPodiumComments() {
+          return;
+        }
+
+        function renderSettledCards() {
+          clearPodiumComments();
+          podiumCards.forEach((card) => {
+            const rank = Number(card.dataset.rank);
+            const settleIndex = sequence.findIndex((item) => item.type === "settle" && item.rank === rank);
+            const isSettled = settleIndex !== -1 && settleIndex <= stage;
+            card.dataset.state = isSettled ? "settled" : "hidden";
+            card.classList.toggle("is-settled", isSettled);
+            card.classList.toggle("is-highlighted", false);
+          });
+        }
+
+        function showFocus(rank, withComment, animateComment) {
+          const data = dataForRank(rank);
+          if (!data || !focusStage || !focusCard) {
+            return;
+          }
+          focusStage.hidden = false;
+          focusStage.dataset.rank = String(rank);
+          focusCard.dataset.rank = String(rank);
+          focusCard.dataset.orientation = data.orientation;
+          focusRank.textContent = `${data.rank} 位`;
+          focusImage.src = data.image;
+          focusName.textContent = data.name;
+          focusScore.textContent = data.score;
+          focusComment.textContent = "";
+          focusComment.classList.remove("is-typing");
+
+          if (withComment) {
+            if (animateComment) {
+              typeComment(focusComment, data.comment);
+            } else {
+              focusComment.textContent = data.comment;
+            }
+          }
+        }
+
+        function hideFocus() {
+          if (focusStage) {
+            focusStage.hidden = true;
+          }
+          stopTyping();
+          if (focusComment) {
+            focusComment.textContent = "";
+          }
+        }
+
+        function launchConfetti(rank) {
+          if (!confettiLayer) {
+            return;
+          }
+          const palette = rank === 1
+            ? ["#f0d28c", "#fff0d1", "#ffb86b", "#f6b89b", "#ffffff"]
+            : rank === 2
+              ? ["#f6b89b", "#ffd9c6", "#ffecd2", "#ffffff", "#f4d488"]
+              : ["#dff1e7", "#bfe2ca", "#ffffff", "#ffd9c6", "#f4d488"];
+
+          for (let index = 0; index < 160; index += 1) {
+            const piece = document.createElement("span");
+            piece.className = "confetti-piece";
+            piece.style.left = `${Math.random() * 100}%`;
+            piece.style.top = `${-18 - Math.random() * 42}vh`;
+            piece.style.background = palette[index % palette.length];
+            piece.style.animationDelay = `${Math.random() * 0.35}s`;
+            piece.style.width = `${8 + Math.random() * 16}px`;
+            piece.style.height = `${10 + Math.random() * 28}px`;
+            piece.style.setProperty("--confetti-x", `${-260 + Math.random() * 520}px`);
+            piece.style.setProperty("--confetti-y", `${92 + Math.random() * 28}vh`);
+            piece.style.setProperty("--confetti-rot", `${640 + Math.random() * 920}deg`);
+            piece.style.setProperty("--confetti-duration", `${3.8 + Math.random() * 2.2}s`);
+            confettiLayer.appendChild(piece);
+            window.setTimeout(() => piece.remove(), 7200);
+          }
+
+          for (let index = 0; index < 44; index += 1) {
+            const streamer = document.createElement("span");
+            streamer.className = "confetti-streamer";
+            streamer.style.left = `${Math.random() * 100}%`;
+            streamer.style.top = `${-12 - Math.random() * 26}vh`;
+            streamer.style.background = palette[index % palette.length];
+            streamer.style.animationDelay = `${Math.random() * 0.3}s`;
+            streamer.style.setProperty("--streamer-x", `${-320 + Math.random() * 640}px`);
+            streamer.style.setProperty("--streamer-y", `${96 + Math.random() * 26}vh`);
+            streamer.style.setProperty("--streamer-rot", `${920 + Math.random() * 1200}deg`);
+            streamer.style.setProperty("--streamer-duration", `${4.8 + Math.random() * 2.6}s`);
+            confettiLayer.appendChild(streamer);
+            window.setTimeout(() => streamer.remove(), 8200);
+          }
+        }
+
+        function animateFocusToPodium(rank) {
+          const targetCard = cardByRank(rank);
+          if (!focusStage || !focusCard || !targetCard) {
+            render(false);
+            return;
+          }
+
+          const startRect = focusCard.getBoundingClientRect();
+          targetCard.classList.add("is-highlighted");
+
+          const clone = focusCard.cloneNode(true);
+          clone.classList.add("focus-card-clone");
+          clone.style.top = `${startRect.top}px`;
+          clone.style.left = `${startRect.left}px`;
+          clone.style.width = `${startRect.width}px`;
+          clone.style.height = `${startRect.height}px`;
+          clone.style.transform = "translate3d(0, 0, 0) scale(1)";
+          document.body.appendChild(clone);
+
+          hideFocus();
+
+          window.requestAnimationFrame(() => {
+            const endRect = targetCard.getBoundingClientRect();
+            const deltaX = endRect.left - startRect.left;
+            const deltaY = endRect.top - startRect.top;
+            const scaleX = endRect.width / startRect.width;
+            const scaleY = endRect.height / startRect.height;
+            clone.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(${scaleX}, ${scaleY})`;
+            clone.style.opacity = "0.86";
+          });
+
+          window.setTimeout(() => {
+            clone.remove();
+            render(false);
+          }, 1100);
+        }
+
+        function render(animateLatest) {
+          renderSettledCards();
+
+          if (stage < 0) {
+            hideFocus();
+            setStatus("結果発表の待機中です");
+            return;
+          }
+
+          const action = sequence[stage];
+          const label = `${action.rank} 位`;
+          if (action.type === "focus") {
+            setStatus(`${label} を発表中です`);
+            showFocus(action.rank, false, false);
+            return;
+          }
+          if (action.type === "comment") {
+            setStatus(`${label} のコメントを表示中です`);
+            showFocus(action.rank, true, animateLatest);
+            return;
+          }
+
+          hideFocus();
+          setStatus(action.rank === 1 ? "1 位まで発表しました" : `${label} が表彰台に入りました`);
+        }
+
+        function setStage(nextStage) {
+          const clamped = Math.max(-1, Math.min(sequence.length - 1, nextStage));
+          const animateLatest = clamped > stage;
+          stage = clamped;
+          const action = stage >= 0 ? sequence[stage] : null;
+
+          if (animateLatest && action && action.type === "focus") {
+            launchConfetti(action.rank);
+          }
+
+          if (animateLatest && action && action.type === "settle") {
+            animateFocusToPodium(action.rank);
+            return;
+          }
+
+          render(animateLatest);
+        }
+
+        function goNext() {
+          if (finishTypingImmediately()) {
+            return;
+          }
+          setStage(stage + 1);
+        }
+
+        function goPrev() {
+          if (finishTypingImmediately()) {
+            return;
+          }
+          setStage(stage - 1);
+        }
+
+        document.addEventListener("click", (event) => {
+          if (event.target.closest("a, button, input, textarea, select")) {
+            return;
+          }
+          goNext();
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === " " || event.key === "ArrowRight" || event.key === "Enter") {
+            event.preventDefault();
+            goNext();
+          }
+          if (event.key === "ArrowLeft" || event.key === "Backspace") {
+            event.preventDefault();
+            goPrev();
+          }
+        });
+
+        render(false);
+      })();
+    </script>
+    {% endif %}
   </body>
 </html>
