@@ -36,25 +36,16 @@
   - 管理画面の `投稿一覧` が旧実装っぽく 1列になる問題
   - `当日運用` / `ゲスト管理` の UI 崩れ
   - `登録済みゲスト` の一覧性悪化
-  - desktop の `Arc` での CSS 崩れの大部分
+  - desktop の `Arc` での CSS 崩れ
 
 ## 新たに確認した重要事項
 
 - `/admin` は Basic 認証つきで本番アクセス可能
 - `/admin/guests` も Basic 認証つきで本番アクセス可能
-- ただし `/admin/guests` 上の `共通 QR コード` 近くに表示される URL が、現在の本番 URL と一致していない
-  - 表示されている URL:
-    - `https://wedding-photo-contest-doef3tydea-an.a.run.app/entry`
-  - 現在の Cloud Run URL:
-    - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app`
-  - 推測:
-    - Cloud Run の `APP_URL` が古い URL のまま残っている
-  - 影響:
-    - 共通 QR の埋め込み先が古い URL の可能性が高い
-    - `/admin/guests` 上で見える案内リンクも古い
-  - 優先度:
-    - 非常に高い
-    - 受付掲示や共通 QR に直結するため
+- `/admin/guests` 上の `共通 QR コード` 近くに表示される URL は、現在の本番 URL に修正済み
+  - 修正後の表示:
+    - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app/entry`
+  - `APP_URL` のズレは解消済み
 
 ## P0: 本番前に最優先で潰す
 
@@ -64,7 +55,7 @@
 - [x] `/health` を Cloud Run に反映して、本番 URL で `ok` を確認した
   - 旧 `/healthz` ではなく `/health` を使う運用に変更済み
 
-- [ ] Cloud Run 上で主要導線の通し確認をやる
+- [x] Cloud Run 上で主要導線の通し確認をやった
   - `/entry`
   - カテゴリ選択
   - 名前選択
@@ -72,7 +63,7 @@
   - 同一端末での再入場
   - 差し替え
   - 共通 QR
-  - ここまで確認済み:
+  - 確認済み:
     - `/entry`
     - カテゴリ選択
     - 名前選択
@@ -80,13 +71,10 @@
     - remembered guest
     - `/entry/reset`
     - `/entry/qr.svg`
-  - 未確認:
     - 実際の投稿
     - 差し替え
-  - 未確認理由:
-    - 本番データを更新するため、実施判断を分けたい
 
-- [ ] Cloud Run 上で admin 導線を通し確認する
+- [x] Cloud Run 上で admin 導線の高優先度確認をやった
   - `/admin`
   - ゲスト追加
   - ゲスト編集
@@ -100,25 +88,20 @@
     - `/admin` への認証つきアクセス
     - `/admin/guests` への認証つきアクセス
     - 画面 HTML の読み取り確認
-  - 未確認:
-    - 追加 / 編集 / 削除
+    - ゲスト追加
+    - ゲスト編集
+    - ゲスト削除
     - eligible 切替
     - 投稿受付の開閉
-    - AI provider 切替
     - 採点実行
     - 手動順位補正 / スコア補正
+  - 未確認 / 必要なら追加で見る:
+    - AI provider 切替の保存挙動
 
-- [ ] Cloud Run の `APP_URL` を現在の本番 URL に修正する
-  - いま `APP_URL` が古い `a.run.app` を向いている可能性が高い
-  - `common_entry_url`
-  - guest invite URL
-  - 共通 QR の埋め込み先
-  - `/admin/guests` 上の表示リンク
-    を正しい URL に揃える必要がある
-  - 修正後に確認すること:
-    - `/admin/guests` の共通リンク表示
-    - `/entry/qr.svg`
-    - 実際の QR 遷移先
+- [x] Cloud Run の `APP_URL` を現在の本番 URL に修正した
+  - `/admin/guests` の共通リンク表示は新 URL を向いている
+  - `common_entry_url` は修正済み
+  - `共通 QR` も同じ helper を使っているため、新 URL 前提になっていると判断できる
 
 - [ ] Cloud Run 上で presentation を実機確認する
   - MacBook Air M2
@@ -161,10 +144,8 @@
   - 演出の開始タイミング
   - 他タスク完了後に最後にまとめてやる
 
-- [ ] ゲスト UI の desktop 表示崩れを確認する
-  - 再現条件: `MacBook Air M2 + Arc + Cloud Run`
-  - `iPhone` では優先度が低いので後回しでよい
-  - ただし desktop で壊れている理由は一度把握しておく
+- [x] ゲスト UI の desktop 表示崩れは解消済み
+  - `MacBook Air M2 + Arc + Cloud Run` でも問題なし
 
 ## P1: AI 準備
 
@@ -215,10 +196,6 @@
 
 ## 次にやる順番
 
-1. Cloud Run の `APP_URL` を現在の本番 URL に修正する
-2. 共通 QR / 共通リンクが新 URL を向くことを確認する
-3. Cloud Run 上の guest 導線のうち、実投稿 / 差し替え確認をやるか決めて実施
-4. admin 導線の書き込み系確認をやる
-5. AI を `mock` のまま行くか / 外部 AI を入れるか決定
-6. 実機 rehearsal
-7. presentation の最後の微調整
+1. AI を `mock` のまま行くか / 外部 AI を入れるか決定
+2. 実機 rehearsal
+3. presentation の最後の微調整
