@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi import Request
@@ -29,6 +30,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
+    app.state.static_version = int(Path("app/static/styles.css").stat().st_mtime)
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
     @app.middleware("http")
