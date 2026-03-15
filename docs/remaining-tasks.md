@@ -10,11 +10,13 @@
 - `AI_PROVIDER=mock` 前提で動かしている
 - `GOOGLE_API_KEY` / `ANTHROPIC_API_KEY` は未設定
 - `/admin` は Cloud Run 上でアクセス可能
+  - Basic 認証あり
 - `/presentation` は Cloud Run 上でアクセス可能
+- `/health` は Cloud Run 上で `ok` を確認済み
 - `/healthz` は Cloud Run 上で 404
   - 原因判明: Cloud Run の既知制約で、`/healthz` のような一部予約パスは外部 URL で使えない
-  - 対応方針: Cloud Run 上の疎通確認は `/health` に統一する
-  - コード側でも `/health` を追加し、ローカル互換で `/healthz` も残す
+  - 対応済み: Cloud Run 上の疎通確認は `/health` に統一した
+  - コード側ではローカル互換のため `/healthz` も残している
 
 ## デプロイ済み環境で追加確認した不具合
 
@@ -25,35 +27,24 @@
 
 - ローカル起動 + `MacBook Air M2 + Arc` では再現しない
 - `iPhone` では少なくともゲスト UI の大崩れは起きていない
-- つまり、`Cloud Run 側だけで古い UI / CSS / asset が出ている` 可能性が高い
-  - ただし、現時点では `原因未確定`
-  - 仮説:
-    - 古い CSS / asset cache
-    - Cloud Run に最新コードが完全には反映されていない
-    - revision 差分
-    - desktop 幅だけで発火する CSS 崩れ
+- 原因判明:
+  - admin / guest / presentation 以外のテンプレートで CSS cache-busting が入っていなかった
+  - Cloud Run 側で古い `styles.css` を掴んでいた可能性が高い
+  - `styles.css?v=...` を全体に適用して解消した
 
-- Cloud Run 上で確認した具体的な問題:
-  - 管理画面の `投稿一覧` が、1投稿ずつ横いっぱいに表示され、一覧性が非常に悪い
-  - `当日運用` / `ゲスト管理` の UI が壊れていて、単純なハイパーリンクのような見た目になっている
-  - `登録済みゲスト` も旧実装の一覧性の悪い UI に見える
-  - ゲスト UI も desktop の `Arc` だと色々崩れる
-    - ただしゲストは基本スマホ利用想定なので優先度は低め
+- 解消済み:
+  - 管理画面の `投稿一覧` が旧実装っぽく 1列になる問題
+  - `当日運用` / `ゲスト管理` の UI 崩れ
+  - `登録済みゲスト` の一覧性悪化
+  - desktop の `Arc` での CSS 崩れの大部分
 
 ## P0: 本番前に最優先で潰す
 
-- [ ] Cloud Run 上で `MacBook Air M2 + Arc` の admin UI が崩れる原因を特定する
-  - `投稿一覧` が旧実装っぽく 1列で出る原因を確認
-  - `当日運用` / `ゲスト管理` のスタイル崩れ原因を確認
-  - `登録済みゲスト` の一覧 UI が古く見える原因を確認
-  - 仮説: stale cache / 古い CSS / 古い revision / desktop 幅での CSS 崩れ
-  - 優先度は高い
-    - 当日運用は `MacBook Air M2 + Arc` が本命端末のため
+- [x] Cloud Run 上で `MacBook Air M2 + Arc` の admin UI 崩れを解消した
+  - `styles.css` の cache-busting を全体に適用して解消
 
-- [ ] `/health` を Cloud Run に反映して、本番 URL で `ok` を確認する
-  - 旧 `/healthz` ではなく `/health` を使う
-  - 再デプロイ後に `https://.../health` を確認する
-  - runbook / deploy 手順の確認先も `/health` に統一する
+- [x] `/health` を Cloud Run に反映して、本番 URL で `ok` を確認した
+  - 旧 `/healthz` ではなく `/health` を使う運用に変更済み
 
 - [ ] Cloud Run 上で主要導線の通し確認をやる
   - `/entry`
@@ -63,6 +54,19 @@
   - 同一端末での再入場
   - 差し替え
   - 共通 QR
+  - ここまで確認済み:
+    - `/entry`
+    - カテゴリ選択
+    - 名前選択
+    - join 画面表示
+    - remembered guest
+    - `/entry/reset`
+    - `/entry/qr.svg`
+  - 未確認:
+    - 実際の投稿
+    - 差し替え
+  - 未確認理由:
+    - 本番データを更新するため、実施判断を分けたい
 
 - [ ] Cloud Run 上で admin 導線を通し確認する
   - `/admin`
@@ -74,6 +78,9 @@
   - AI provider 切替
   - 採点実行
   - 手動順位補正 / スコア補正
+  - 現状のブロッカー:
+    - 本番 `/admin` は Basic 認証が必要
+    - 認証情報なしでは 401
 
 - [ ] Cloud Run 上で presentation を実機確認する
   - MacBook Air M2
@@ -170,10 +177,9 @@
 
 ## 次にやる順番
 
-1. `MacBook Air M2 + Arc` で起きる Cloud Run 上の admin UI 崩れ原因特定
-2. `/health` を Cloud Run に反映して `ok` を確認
-3. Cloud Run 上で通し確認
-4. 本番 URL の最終確定と QR fix
-5. AI を `mock` のまま行くか / 外部 AI を入れるか決定
-6. 実機 rehearsal
-7. presentation の最後の微調整
+1. Cloud Run 上の guest 導線のうち、実投稿 / 差し替え確認をやるか決めて実施
+2. admin 導線の本番確認をやる
+3. 本番 URL の最終確定と QR fix
+4. AI を `mock` のまま行くか / 外部 AI を入れるか決定
+5. 実機 rehearsal
+6. presentation の最後の微調整
