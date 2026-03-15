@@ -7,12 +7,13 @@
 - Cloud Run service `wedding-photo-contest` への再デプロイは実施済み
 - Cloud Run URL:
   - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app`
-- `AI_PROVIDER=mock` 前提で動かしている
-- `GOOGLE_API_KEY` / `ANTHROPIC_API_KEY` は未設定
+- `GOOGLE_API_KEY` は設定済み
+- `ANTHROPIC_API_KEY` は未設定
 - AI 方針:
   - 本番では外部 AI を入れる
   - まずは Gemini の free tier 内で最も良い stable モデルを使う方針
   - 現時点の第一候補は `gemini-2.5-flash`
+  - Gemini は Cloud Run で動作確認済み
 - `/admin` は Cloud Run 上でアクセス可能
   - Basic 認証あり
 - `/presentation` は Cloud Run 上でアクセス可能
@@ -158,25 +159,34 @@
   - 第一候補は Gemini
   - 現時点の第一候補モデルは `gemini-2.5-flash`
 
-- [ ] 外部 AI の provider / model を最終確定する
+- [x] 外部 AI の provider / model をひとまず決定した
   - 第一候補:
     - `gemini`
     - `gemini-2.5-flash`
   - 比較候補:
     - `gemini-2.5-flash-lite`
-  - 本番当日に迷わない状態にする
+  - Gemini Flash 2.5 は Cloud Run 上で動作確認済み
 
-- [ ] 外部 AI を使うなら secret を準備する
+- [x] 外部 AI 用 secret を準備した
   - `GOOGLE_API_KEY`
   - Secret Manager 登録
   - `roles/secretmanager.secretAccessor` 付与
   - Cloud Run 再デプロイ
 
-- [ ] 本番で使う provider で採点が通ることを確認する
+- [x] 本番で使う provider で採点が通ることを確認した
   - 1件採点
   - 数件採点
   - 全件採点
   - エラー時に `mock` へ戻せることを確認
+
+- [ ] Gemini free tier の運用上限を見ながら、どこまで実験するか決める
+  - 実験用の上限回数を決める
+  - 必要なら paid tier へ移行する判断ポイントを決める
+
+- [ ] 必要なら `gemini-2.5-flash-lite` と比較する
+  - 速度
+  - コメント品質
+  - 採点の納得感
 
 ## P2: LLM / prompt 整理
 
@@ -196,6 +206,22 @@
 - [ ] 上位 3 件だけコメント再生成できる運用を検討する
   - 当日、表示前に少し整える用途
 
+## P2: 参加者向けフィードバック
+
+- [ ] 参加者全員に採点結果とコメントを返す機能を検討する
+  - 投稿後すぐ返すか
+  - 締切後 / 採点後に返すか
+  - guest の join 画面で見せるか
+  - 個別 URL で見せるか
+  - スコアをそのまま見せるか
+  - コメントだけ見せるか
+
+- [ ] 参加者向けフィードバックを返す場合の UX を決める
+  - 返すタイミング
+  - 再投稿 / 差し替え時の扱い
+  - 未採点時の見せ方
+  - 本番演出前に順位が読めてしまわない設計にする
+
 ## P3: あとでやる改善
 
 - [ ] `styles.css` の cache-busting を presentation 以外にも広げる
@@ -204,8 +230,6 @@
 
 ## 次にやる順番
 
-1. `GOOGLE_API_KEY` を準備して Gemini を Cloud Run に入れる
-2. `gemini-2.5-flash` で採点確認をする
+1. 実機 rehearsal
+2. presentation の最後の微調整
 3. 必要なら `gemini-2.5-flash-lite` と比較する
-4. 実機 rehearsal
-5. presentation の最後の微調整
