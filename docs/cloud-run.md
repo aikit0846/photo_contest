@@ -19,7 +19,79 @@ Docker を使わず、`Cloud Shell` から `gcloud run deploy --source .` する
 - `/healthz` を追加した
 - 投稿画面で対応ブラウザなら画像を軽量化してから送る
 
+## まず結論
+
+### 初回セットアップでだけ必要
+
+- この md の `GCP 側でやること` を最初から最後までやる
+- Cloud Run service account、Firestore、Cloud Storage、Secret Manager を作る
+- 初回 deploy 後に Cloud Run の URL を取得し、`APP_URL` を本番 URL にして再 deploy する
+
+### 2回目以降の再デプロイで毎回必要
+
+- 最新コードを Cloud Shell 側に持ってくる
+- `gcloud config set project ...`
+- `gcloud config set run/region ...`
+- `gcloud run deploy wedding-photo-contest --source . ...`
+- deploy 後に `/healthz`、`/admin`、`/presentation` を確認する
+
+### 変更があったときだけ必要
+
+- `APP_URL` が変わるとき: `--set-env-vars APP_URL=...` を更新する
+- Secret の値が変わるとき: Secret Manager を更新する
+- env var を追加・変更したとき: `gcloud run deploy` の `--set-env-vars` を更新する
+- service を一度削除しているとき: 通常の `gcloud run deploy --source .` で再作成する
+
+## 再デプロイだけしたい場合
+
+GCP 側の初回セットアップが終わっていて、Cloud Run service もすでに存在する前提なら、通常は次の手順だけで十分です。
+
+### 1. Cloud Shell で最新コードを取得
+
+```bash
+cd photo_contest
+git pull
+```
+
+Cloud Shell にまだ repository がない場合だけ、後述の `Cloud Shell でのデプロイ -> コード取得` をやってください。
+
+### 2. project / region を確認
+
+```bash
+gcloud config set project YOUR_PROJECT_ID
+gcloud config set run/region asia-northeast1
+```
+
+### 3. 再デプロイ
+
+`APP_URL` が変わらないなら、基本的にはこのコマンドで再デプロイできます。
+
+```bash
+gcloud run deploy wedding-photo-contest \
+  --source . \
+  --region asia-northeast1 \
+  --allow-unauthenticated \
+  --service-account photo-contest-run@YOUR_PROJECT_ID.iam.gserviceaccount.com \
+  --cpu 1 \
+  --memory 1Gi \
+  --concurrency 8 \
+  --max-instances 3 \
+  --min-instances 0 \
+  --timeout 60 \
+  --set-env-vars APP_URL=https://YOUR_RUN_APP_URL,DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT=YOUR_PROJECT_ID,FIRESTORE_DATABASE='(default)',GCS_BUCKET=YOUR_BUCKET_NAME,AI_PROVIDER=auto \
+  --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
+```
+
+### 4. デプロイ後の確認
+
+- `GET /healthz` が `ok`
+- `/admin` に入れる
+- `/presentation` が崩れていない
+- 必要なら `AI_PROVIDER=mock` で採点を通す
+
 ## GCP 側でやること
+
+以下は基本的に `初回セットアップ時だけ` 必要です。
 
 ### 1. プロジェクトとリージョン
 
