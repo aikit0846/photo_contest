@@ -40,8 +40,9 @@ def create_app() -> FastAPI:
         response.headers.setdefault("Referrer-Policy", "same-origin")
         return response
 
+    @app.get("/health", response_class=PlainTextResponse)
     @app.get("/healthz", response_class=PlainTextResponse)
-    async def healthz() -> str:
+    async def health() -> str:
         return "ok"
 
     app.include_router(public.router)

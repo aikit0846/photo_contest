@@ -12,8 +12,9 @@
 - `/admin` は Cloud Run 上でアクセス可能
 - `/presentation` は Cloud Run 上でアクセス可能
 - `/healthz` は Cloud Run 上で 404
-  - 推測: deploy されたソースが手元の最新 workspace と一致していない可能性がある
-  - 推測: あるいは Cloud Run 上の revision が古いコードを見ている可能性がある
+  - 原因判明: Cloud Run の既知制約で、`/healthz` のような一部予約パスは外部 URL で使えない
+  - 対応方針: Cloud Run 上の疎通確認は `/health` に統一する
+  - コード側でも `/health` を追加し、ローカル互換で `/healthz` も残す
 
 ## デプロイ済み環境で追加確認した不具合
 
@@ -49,11 +50,10 @@
   - 優先度は高い
     - 当日運用は `MacBook Air M2 + Arc` が本命端末のため
 
-- [ ] Cloud Run の `/healthz` 404 の原因を特定する
-  - 確認1: `gcloud run services describe "$SERVICE_NAME" --region "$REGION"` で最新 revision を確認
-  - 確認2: `gcloud run revisions describe REVISION_NAME --region "$REGION"` で env / revision を確認
-  - 確認3: Cloud Shell 側のコードが手元の最新修正と一致しているか確認
-  - 対応方針: 最新コードを確実に Cloud Run に反映して、`/healthz` が `ok` を返す状態にする
+- [ ] `/health` を Cloud Run に反映して、本番 URL で `ok` を確認する
+  - 旧 `/healthz` ではなく `/health` を使う
+  - 再デプロイ後に `https://.../health` を確認する
+  - runbook / deploy 手順の確認先も `/health` に統一する
 
 - [ ] Cloud Run 上で主要導線の通し確認をやる
   - `/entry`
@@ -171,7 +171,7 @@
 ## 次にやる順番
 
 1. `MacBook Air M2 + Arc` で起きる Cloud Run 上の admin UI 崩れ原因特定
-2. `/healthz` 404 の原因特定
+2. `/health` を Cloud Run に反映して `ok` を確認
 3. Cloud Run 上で通し確認
 4. 本番 URL の最終確定と QR fix
 5. AI を `mock` のまま行くか / 外部 AI を入れるか決定
