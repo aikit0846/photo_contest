@@ -38,6 +38,24 @@
   - `登録済みゲスト` の一覧性悪化
   - desktop の `Arc` での CSS 崩れの大部分
 
+## 新たに確認した重要事項
+
+- `/admin` は Basic 認証つきで本番アクセス可能
+- `/admin/guests` も Basic 認証つきで本番アクセス可能
+- ただし `/admin/guests` 上の `共通 QR コード` 近くに表示される URL が、現在の本番 URL と一致していない
+  - 表示されている URL:
+    - `https://wedding-photo-contest-doef3tydea-an.a.run.app/entry`
+  - 現在の Cloud Run URL:
+    - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app`
+  - 推測:
+    - Cloud Run の `APP_URL` が古い URL のまま残っている
+  - 影響:
+    - 共通 QR の埋め込み先が古い URL の可能性が高い
+    - `/admin/guests` 上で見える案内リンクも古い
+  - 優先度:
+    - 非常に高い
+    - 受付掲示や共通 QR に直結するため
+
 ## P0: 本番前に最優先で潰す
 
 - [x] Cloud Run 上で `MacBook Air M2 + Arc` の admin UI 崩れを解消した
@@ -78,9 +96,29 @@
   - AI provider 切替
   - 採点実行
   - 手動順位補正 / スコア補正
-  - 現状のブロッカー:
-    - 本番 `/admin` は Basic 認証が必要
-    - 認証情報なしでは 401
+  - ここまで確認済み:
+    - `/admin` への認証つきアクセス
+    - `/admin/guests` への認証つきアクセス
+    - 画面 HTML の読み取り確認
+  - 未確認:
+    - 追加 / 編集 / 削除
+    - eligible 切替
+    - 投稿受付の開閉
+    - AI provider 切替
+    - 採点実行
+    - 手動順位補正 / スコア補正
+
+- [ ] Cloud Run の `APP_URL` を現在の本番 URL に修正する
+  - いま `APP_URL` が古い `a.run.app` を向いている可能性が高い
+  - `common_entry_url`
+  - guest invite URL
+  - 共通 QR の埋め込み先
+  - `/admin/guests` 上の表示リンク
+    を正しい URL に揃える必要がある
+  - 修正後に確認すること:
+    - `/admin/guests` の共通リンク表示
+    - `/entry/qr.svg`
+    - 実際の QR 遷移先
 
 - [ ] Cloud Run 上で presentation を実機確認する
   - MacBook Air M2
@@ -177,9 +215,10 @@
 
 ## 次にやる順番
 
-1. Cloud Run 上の guest 導線のうち、実投稿 / 差し替え確認をやるか決めて実施
-2. admin 導線の本番確認をやる
-3. 本番 URL の最終確定と QR fix
-4. AI を `mock` のまま行くか / 外部 AI を入れるか決定
-5. 実機 rehearsal
-6. presentation の最後の微調整
+1. Cloud Run の `APP_URL` を現在の本番 URL に修正する
+2. 共通 QR / 共通リンクが新 URL を向くことを確認する
+3. Cloud Run 上の guest 導線のうち、実投稿 / 差し替え確認をやるか決めて実施
+4. admin 導線の書き込み系確認をやる
+5. AI を `mock` のまま行くか / 外部 AI を入れるか決定
+6. 実機 rehearsal
+7. presentation の最後の微調整
