@@ -92,4 +92,5 @@ uv run python scripts/seed_demo.py
 - Cloud Run の source deploy 前提で `Procfile` を追加済みです
 - Cloud Run 用の詳細手順は [docs/cloud-run.md](/Users/taikisuzuki/wedding/photo_contest/docs/cloud-run.md)
 - 本番前の確認事項と救済フローは [docs/runbook.md](/Users/taikisuzuki/wedding/photo_contest/docs/runbook.md)
+- 現在の残タスク管理は [docs/remaining-tasks.md](/Users/taikisuzuki/wedding/photo_contest/docs/remaining-tasks.md)
 - 今日はここで止めるときの扱いは [docs/cloud-run.md](/Users/taikisuzuki/wedding/photo_contest/docs/cloud-run.md) の「作業を止めるとき」を参照
