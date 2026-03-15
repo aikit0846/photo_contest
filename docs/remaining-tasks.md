@@ -9,6 +9,10 @@
   - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app`
 - `AI_PROVIDER=mock` 前提で動かしている
 - `GOOGLE_API_KEY` / `ANTHROPIC_API_KEY` は未設定
+- AI 方針:
+  - 本番では外部 AI を入れる
+  - まずは Gemini の free tier 内で最も良い stable モデルを使う方針
+  - 現時点の第一候補は `gemini-2.5-flash`
 - `/admin` は Cloud Run 上でアクセス可能
   - Basic 認証あり
 - `/presentation` は Cloud Run 上でアクセス可能
@@ -149,17 +153,21 @@
 
 ## P1: AI 準備
 
-- [ ] 当日 AI を `mock` のままで行くか決める
-  - 安定性優先なら `mock`
-  - 演出優先なら `gemini` or `anthropic`
+- [x] 当日 AI を `mock` のままで行くか決める
+  - 本番では外部 AI を入れる方針
+  - 第一候補は Gemini
+  - 現時点の第一候補モデルは `gemini-2.5-flash`
 
-- [ ] 外部 AI を使うなら provider を 1 つに絞る
-  - 第一候補
-  - 予備候補
+- [ ] 外部 AI の provider / model を最終確定する
+  - 第一候補:
+    - `gemini`
+    - `gemini-2.5-flash`
+  - 比較候補:
+    - `gemini-2.5-flash-lite`
   - 本番当日に迷わない状態にする
 
 - [ ] 外部 AI を使うなら secret を準備する
-  - `GOOGLE_API_KEY` または `ANTHROPIC_API_KEY`
+  - `GOOGLE_API_KEY`
   - Secret Manager 登録
   - `roles/secretmanager.secretAccessor` 付与
   - Cloud Run 再デプロイ
@@ -196,6 +204,8 @@
 
 ## 次にやる順番
 
-1. AI を `mock` のまま行くか / 外部 AI を入れるか決定
-2. 実機 rehearsal
-3. presentation の最後の微調整
+1. `GOOGLE_API_KEY` を準備して Gemini を Cloud Run に入れる
+2. `gemini-2.5-flash` で採点確認をする
+3. 必要なら `gemini-2.5-flash-lite` と比較する
+4. 実機 rehearsal
+5. presentation の最後の微調整
