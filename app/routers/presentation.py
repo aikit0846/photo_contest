@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import Request
@@ -27,6 +29,7 @@ def presentation(
 ) -> HTMLResponse:
     event = get_event(repository, settings)
     winners = leaderboard(repository, limit=3)
+    static_version = int(Path("app/static/styles.css").stat().st_mtime)
     return templates.TemplateResponse(
         "presentation.html",
         {
@@ -34,5 +37,6 @@ def presentation(
             "event": event,
             "winners": winners,
             "effective_score": effective_score,
+            "static_version": static_version,
         },
     )

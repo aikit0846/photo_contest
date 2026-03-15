@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Presentation | {{ event.title }}</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v={{ static_version }}" />
   </head>
   <body class="presentation-body">
     <div id="confetti-layer" class="confetti-layer" aria-hidden="true"></div>
@@ -35,45 +35,52 @@
       </header>
       {% if winners %}
       <p id="presentation-status" class="presentation-status-hidden" aria-live="polite"></p>
-      <section id="podium" class="podium-stage">
-        {% for winner in winners %}
-        {% set rank = loop.index %}
-        {% if rank == 2 %}
-        {% set slot_class = "left" %}
-        {% elif rank == 1 %}
-        {% set slot_class = "center" %}
-        {% else %}
-        {% set slot_class = "right" %}
-        {% endif %}
-        <article class="podium-slot slot-{{ slot_class }}" data-rank="{{ rank }}">
-          <div
-            class="podium-card rank-{{ rank }}"
-            data-rank="{{ rank }}"
-            data-name="{{ winner.guest.label }}"
-            data-score="{{ effective_score(winner) }} pts"
-            data-comment="{{ winner.score.summary }}"
-            data-image="{{ winner.image_url }}"
-            data-state="hidden"
-          >
-            <div class="podium-image-frame">
-              <img src="{{ winner.image_url }}" alt="{{ winner.guest.label }}" />
-            </div>
-            <div class="podium-card-body">
-              <div class="podium-meta">
-                <h2>{{ winner.guest.label }}</h2>
-                <p class="podium-score">{{ effective_score(winner) }} pts</p>
+      <section id="presentation-stage-viewport" class="presentation-stage-viewport">
+        <div id="presentation-stage-wrap" class="presentation-stage-wrap">
+          <section id="podium" class="podium-stage">
+            {% for winner in winners %}
+            {% set rank = loop.index %}
+            {% if rank == 2 %}
+            {% set slot_class = "left" %}
+            {% elif rank == 1 %}
+            {% set slot_class = "center" %}
+            {% else %}
+            {% set slot_class = "right" %}
+            {% endif %}
+            <article class="podium-slot slot-{{ slot_class }}" data-rank="{{ rank }}">
+              <div
+                class="podium-card rank-{{ rank }}"
+                data-rank="{{ rank }}"
+                data-name="{{ winner.guest.label }}"
+                data-score="{{ effective_score(winner) }} pts"
+                data-comment="{{ winner.score.summary }}"
+                data-image="{{ winner.image_url }}"
+                data-state="hidden"
+              >
+                <div class="podium-image-frame">
+                  <img src="{{ winner.image_url }}" alt="{{ winner.guest.label }}" />
+                </div>
+                <div class="podium-card-body">
+                  <div class="podium-meta">
+                    <h2>{{ winner.guest.label }}</h2>
+                    <p class="podium-score">{{ effective_score(winner) }} pts</p>
+                  </div>
+                  <p class="podium-comment">{{ winner.score.summary }}</p>
+                </div>
               </div>
-              <p class="podium-comment">{{ winner.score.summary }}</p>
-            </div>
-          </div>
-          <div class="podium-stand podium-stand-{{ rank }}">
-            <span class="podium-stand-number">{{ rank }}</span>
-          </div>
-        </article>
-        {% endfor %}
-      </section>
-      <section class="presentation-finale">
-        <p class="presentation-finale-en">Thank you for capturing the best moments of our day.</p>
+              <div class="podium-stand podium-stand-{{ rank }}">
+                <span class="podium-stand-number">{{ rank }}</span>
+              </div>
+            </article>
+            {% endfor %}
+          </section>
+          <section class="presentation-finale">
+            <p class="presentation-finale-en">
+              <span>Thank you for capturing the best moments</span>
+              <span>of our day.</span>
+            </p>
+          </section>
+        </div>
       </section>
       {% else %}
       <p class="empty-copy">まだ結果がありません。管理画面から採点を実行してください。</p>
@@ -92,6 +99,8 @@
         const focusComment = document.getElementById("focus-comment");
         const status = document.getElementById("presentation-status");
         const confettiLayer = document.getElementById("confetti-layer");
+        const stageViewport = document.getElementById("presentation-stage-viewport");
+        const stageWrap = document.getElementById("presentation-stage-wrap");
 
         const revealRanks = podiumCards
           .map((card) => Number(card.dataset.rank))
@@ -137,6 +146,19 @@
           if (status) {
             status.textContent = text;
           }
+        }
+
+        function fitStageToViewport() {
+          if (!stageViewport || !stageWrap) {
+            return;
+          }
+          stageWrap.style.transform = "scale(1)";
+          const availableWidth = stageViewport.clientWidth;
+          const availableHeight = stageViewport.clientHeight;
+          const contentWidth = stageWrap.scrollWidth;
+          const contentHeight = stageWrap.scrollHeight;
+          const scale = Math.min(1, availableWidth / contentWidth, availableHeight / contentHeight);
+          stageWrap.style.transform = `scale(${scale})`;
         }
 
         function stopTyping() {
@@ -247,9 +269,9 @@
             const piece = document.createElement("span");
             piece.className = "confetti-piece";
             piece.style.left = `${Math.random() * 100}%`;
-            piece.style.top = `${-18 - Math.random() * 42}vh`;
+            piece.style.top = `${-16 - Math.random() * 20}vh`;
             piece.style.background = palette[index % palette.length];
-            piece.style.animationDelay = `${Math.random() * 0.35}s`;
+            piece.style.animationDelay = `${-(0.24 + Math.random() * 0.34)}s`;
             piece.style.width = `${8 + Math.random() * 16}px`;
             piece.style.height = `${10 + Math.random() * 28}px`;
             piece.style.setProperty("--confetti-x", `${-260 + Math.random() * 520}px`);
@@ -264,9 +286,9 @@
             const streamer = document.createElement("span");
             streamer.className = "confetti-streamer";
             streamer.style.left = `${Math.random() * 100}%`;
-            streamer.style.top = `${-12 - Math.random() * 26}vh`;
+            streamer.style.top = `${-14 - Math.random() * 18}vh`;
             streamer.style.background = palette[index % palette.length];
-            streamer.style.animationDelay = `${Math.random() * 0.3}s`;
+            streamer.style.animationDelay = `${-(0.2 + Math.random() * 0.28)}s`;
             streamer.style.setProperty("--streamer-x", `${-320 + Math.random() * 640}px`);
             streamer.style.setProperty("--streamer-y", `${96 + Math.random() * 26}vh`);
             streamer.style.setProperty("--streamer-rot", `${920 + Math.random() * 1200}deg`);
@@ -319,6 +341,7 @@
           if (stage < 0) {
             hideFocus();
             setStatus("結果発表の待機中です");
+            window.requestAnimationFrame(fitStageToViewport);
             return;
           }
 
@@ -337,6 +360,7 @@
 
           hideFocus();
           setStatus(action.rank === 1 ? "1 位まで発表しました" : `${label} が表彰台に入りました`);
+          window.requestAnimationFrame(fitStageToViewport);
         }
 
         function setStage(nextStage) {
@@ -345,13 +369,13 @@
           stage = clamped;
           const action = stage >= 0 ? sequence[stage] : null;
 
-          if (animateLatest && action && action.type === "focus") {
-            launchConfetti(action.rank);
-          }
-
           if (animateLatest && action && action.type === "settle") {
             animateFocusToPodium(action.rank);
             return;
+          }
+
+          if (animateLatest && action && action.type === "focus") {
+            launchConfetti(action.rank);
           }
 
           render(animateLatest);
@@ -389,7 +413,29 @@
           }
         });
 
+        podiumCards.forEach((card) => {
+          const image = card.querySelector("img");
+          if (!image || image.complete) {
+            return;
+          }
+          image.addEventListener("load", () => {
+            window.requestAnimationFrame(fitStageToViewport);
+          });
+        });
+
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(() => {
+            window.requestAnimationFrame(fitStageToViewport);
+          });
+        }
+
+        window.addEventListener("load", () => {
+          window.requestAnimationFrame(fitStageToViewport);
+        });
+        window.addEventListener("resize", fitStageToViewport);
+
         render(false);
+        window.requestAnimationFrame(fitStageToViewport);
       })();
     </script>
     {% endif %}
