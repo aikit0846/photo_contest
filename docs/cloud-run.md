@@ -4,11 +4,42 @@ Docker を使わず、`Cloud Shell` から `gcloud run deploy --source .` する
 
 ## 先に決めておくもの
 
-- `YOUR_PROJECT_ID`
-- `YOUR_REGION` : まずは `asia-northeast1`
-- `YOUR_BUCKET_NAME`
+- `PROJECT_ID=wedding-photo-contest-20260419`
+- `REGION=asia-northeast1`
+- `BUCKET_NAME=wedding-photo-contest-20260419-assets`
+- `SERVICE_NAME=wedding-photo-contest`
 - `ADMIN_PASSWORD`
 - 使うなら `GOOGLE_API_KEY` / `ANTHROPIC_API_KEY`
+
+## このプロジェクトで使う値
+
+この repository では、少なくとも次の値は固定前提で書いてよいです。
+
+```bash
+export PROJECT_ID=wedding-photo-contest-20260419
+export REGION=asia-northeast1
+export BUCKET_NAME=wedding-photo-contest-20260419-assets
+export SERVICE_NAME=wedding-photo-contest
+```
+
+`APP_URL` だけは、Cloud Run service の実 URL を使います。
+
+- すでに service が存在するなら、先に現在の URL を取得してそのまま使えばよい
+- 同じ `SERVICE_NAME` に再 deploy する限り、通常は URL は変わらない
+- つまり再デプロイ時は、まず今の URL を見ればよい
+
+```bash
+gcloud run services describe "$SERVICE_NAME" \
+  --region "$REGION" \
+  --format='value(status.url)'
+```
+
+出てきた URL を `APP_URL` に入れます。例:
+
+```bash
+export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format='value(status.url)')"
+echo "$APP_URL"
+```
 
 ## このコードで追加済みの対応
 
@@ -58,31 +89,42 @@ Cloud Shell にまだ repository がない場合だけ、後述の `Cloud Shell 
 ### 2. project / region を確認
 
 ```bash
-gcloud config set project YOUR_PROJECT_ID
-gcloud config set run/region asia-northeast1
+gcloud config set project "$PROJECT_ID"
+gcloud config set run/region "$REGION"
 ```
 
-### 3. 再デプロイ
+### 3. いまの APP_URL を取得
+
+同じ Cloud Run service に再 deploy するなら、今の service URL をそのまま `APP_URL` に使えば大丈夫です。
+
+```bash
+export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format='value(status.url)')"
+echo "$APP_URL"
+```
+
+もしまだ service が存在しない場合だけ、後ろの `初回 deploy` から始めてください。
+
+### 4. 再デプロイ
 
 `APP_URL` が変わらないなら、基本的にはこのコマンドで再デプロイできます。
 
 ```bash
-gcloud run deploy wedding-photo-contest \
+gcloud run deploy "$SERVICE_NAME" \
   --source . \
-  --region asia-northeast1 \
+  --region "$REGION" \
   --allow-unauthenticated \
-  --service-account photo-contest-run@YOUR_PROJECT_ID.iam.gserviceaccount.com \
+  --service-account "photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --cpu 1 \
   --memory 1Gi \
   --concurrency 8 \
   --max-instances 3 \
   --min-instances 0 \
   --timeout 60 \
-  --set-env-vars APP_URL=https://YOUR_RUN_APP_URL,DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT=YOUR_PROJECT_ID,FIRESTORE_DATABASE='(default)',GCS_BUCKET=YOUR_BUCKET_NAME,AI_PROVIDER=auto \
+  --set-env-vars APP_URL="$APP_URL",DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=auto \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
 ```
 
-### 4. デプロイ後の確認
+### 5. デプロイ後の確認
 
 - `GET /healthz` が `ok`
 - `/admin` に入れる
@@ -96,8 +138,8 @@ gcloud run deploy wedding-photo-contest \
 ### 1. プロジェクトとリージョン
 
 ```bash
-gcloud config set project YOUR_PROJECT_ID
-gcloud config set run/region asia-northeast1
+gcloud config set project "$PROJECT_ID"
+gcloud config set run/region "$REGION"
 ```
 
 ### 2. API 有効化
@@ -117,7 +159,7 @@ gcloud services enable \
 ```bash
 gcloud firestore databases create \
   --database='(default)' \
-  --location=asia-northeast1 \
+  --location="$REGION" \
   --edition=standard \
   --type=firestore-native
 ```
@@ -125,8 +167,8 @@ gcloud firestore databases create \
 ### 4. Cloud Storage bucket 作成
 
 ```bash
-gcloud storage buckets create gs://YOUR_BUCKET_NAME \
-  --location=asia-northeast1 \
+gcloud storage buckets create "gs://$BUCKET_NAME" \
+  --location="$REGION" \
   --uniform-bucket-level-access
 ```
 
@@ -140,12 +182,12 @@ gcloud iam service-accounts create photo-contest-run \
 ### 6. 権限付与
 
 ```bash
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:photo-contest-run@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/datastore.user"
 
-gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET_NAME \
-  --member="serviceAccount:photo-contest-run@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+gcloud storage buckets add-iam-policy-binding "gs://$BUCKET_NAME" \
+  --member="serviceAccount:photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/storage.objectAdmin"
 ```
 
@@ -159,15 +201,15 @@ printf 'YOUR_ANTHROPIC_API_KEY' | gcloud secrets create ANTHROPIC_API_KEY --data
 
 ```bash
 gcloud secrets add-iam-policy-binding ADMIN_PASSWORD \
-  --member="serviceAccount:photo-contest-run@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --member="serviceAccount:photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 
 gcloud secrets add-iam-policy-binding GOOGLE_API_KEY \
-  --member="serviceAccount:photo-contest-run@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --member="serviceAccount:photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 
 gcloud secrets add-iam-policy-binding ANTHROPIC_API_KEY \
-  --member="serviceAccount:photo-contest-run@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --member="serviceAccount:photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
 
@@ -201,44 +243,51 @@ cd photo_contest
 `APP_URL` はまだ不明なので、最初はダミーでも構いません。
 
 ```bash
-gcloud run deploy wedding-photo-contest \
+gcloud run deploy "$SERVICE_NAME" \
   --source . \
-  --region asia-northeast1 \
+  --region "$REGION" \
   --allow-unauthenticated \
-  --service-account photo-contest-run@YOUR_PROJECT_ID.iam.gserviceaccount.com \
+  --service-account "photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --cpu 1 \
   --memory 1Gi \
   --concurrency 8 \
   --max-instances 3 \
   --min-instances 0 \
   --timeout 60 \
-  --set-env-vars APP_URL=https://example.invalid,DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT=YOUR_PROJECT_ID,FIRESTORE_DATABASE='(default)',GCS_BUCKET=YOUR_BUCKET_NAME,AI_PROVIDER=auto \
+  --set-env-vars APP_URL=https://example.invalid,DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=auto \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
 ```
 
 ### 3. URL 取得
 
 ```bash
-gcloud run services describe wedding-photo-contest \
-  --region asia-northeast1 \
+gcloud run services describe "$SERVICE_NAME" \
+  --region "$REGION" \
   --format='value(status.url)'
 ```
 
 ### 4. APP_URL を本番URLで更新して再 deploy
 
+まず URL を取得:
+
 ```bash
-gcloud run deploy wedding-photo-contest \
+export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format='value(status.url)')"
+echo "$APP_URL"
+```
+
+```bash
+gcloud run deploy "$SERVICE_NAME" \
   --source . \
-  --region asia-northeast1 \
+  --region "$REGION" \
   --allow-unauthenticated \
-  --service-account photo-contest-run@YOUR_PROJECT_ID.iam.gserviceaccount.com \
+  --service-account "photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --cpu 1 \
   --memory 1Gi \
   --concurrency 8 \
   --max-instances 3 \
   --min-instances 0 \
   --timeout 60 \
-  --set-env-vars APP_URL=https://YOUR_RUN_APP_URL,DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT=YOUR_PROJECT_ID,FIRESTORE_DATABASE='(default)',GCS_BUCKET=YOUR_BUCKET_NAME,AI_PROVIDER=auto \
+  --set-env-vars APP_URL="$APP_URL",DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=auto \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
 ```
 
@@ -266,9 +315,9 @@ STORAGE_BACKEND=local
 ```env
 DATA_BACKEND=firestore
 STORAGE_BACKEND=gcs
-FIRESTORE_PROJECT=YOUR_PROJECT_ID
+FIRESTORE_PROJECT=wedding-photo-contest-20260419
 FIRESTORE_DATABASE=(default)
-GCS_BUCKET=YOUR_BUCKET_NAME
+GCS_BUCKET=wedding-photo-contest-20260419-assets
 ```
 
 ## 作業を止めるとき
@@ -288,7 +337,7 @@ GCS_BUCKET=YOUR_BUCKET_NAME
 データは残したまま、Cloud Run だけ消す:
 
 ```bash
-gcloud run services delete wedding-photo-contest --region asia-northeast1
+gcloud run services delete "$SERVICE_NAME" --region "$REGION"
 ```
 
 残るもの:
