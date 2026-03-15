@@ -123,6 +123,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --min-instances 0 \
   --timeout 60 \
   --set-env-vars APP_URL="$APP_URL",DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=mock \
+  --remove-secrets GOOGLE_API_KEY,ANTHROPIC_API_KEY \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest
 ```
 
@@ -281,6 +282,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --min-instances 0 \
   --timeout 60 \
   --set-env-vars APP_URL=https://example.invalid,DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=mock \
+  --remove-secrets GOOGLE_API_KEY,ANTHROPIC_API_KEY \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest
 ```
 
@@ -316,6 +318,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --min-instances 0 \
   --timeout 60 \
   --set-env-vars APP_URL="$APP_URL",DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=mock \
+  --remove-secrets GOOGLE_API_KEY,ANTHROPIC_API_KEY \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest
 ```
 
@@ -356,7 +359,7 @@ gcloud secrets add-iam-policy-binding ANTHROPIC_API_KEY \
 
 その後、もう一度 `gcloud run deploy ...` を実行してください。
 
-もし今回は API キーを使わず、`mock` だけでよいなら、deploy コマンドの `--update-secrets` から `GOOGLE_API_KEY` と `ANTHROPIC_API_KEY` を外しても構いません。
+もし今回は API キーを使わず、`mock` だけでよいなら、deploy コマンドの `--update-secrets` から `GOOGLE_API_KEY` と `ANTHROPIC_API_KEY` を外すだけでなく、`--remove-secrets GOOGLE_API_KEY,ANTHROPIC_API_KEY` も付けて既存の参照を消してください。
 
 ## ローカルと本番の切り替え
 
