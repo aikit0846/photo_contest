@@ -76,7 +76,7 @@
         {% for entry in top_entries %}
         <li>
           <span>#{{ loop.index }}</span>
-          <strong>{{ entry.guest.label }}</strong>
+          <strong class="person-name">{{ entry.guest.label }}</strong>
           <span>{{ effective_score(entry) }} 点</span>
           <span>{{ entry.score.summary }}</span>
         </li>
@@ -115,7 +115,7 @@
         <div class="submission-card-body">
           <div class="submission-head">
             <div>
-              <h3>{{ submission.guest.label }}</h3>
+              <h3 class="person-name">{{ submission.guest.label }}</h3>
               <p>{{ "新郎側" if submission.guest.side == "groom" else "新婦側" }} / {{ submission.guest.group_type }}</p>
             </div>
             <div class="submission-statuses">

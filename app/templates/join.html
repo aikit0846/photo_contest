@@ -4,7 +4,7 @@
 {% block guest_subtitle %}{% endblock %}
 {% block content %}
 <section class="guest-panel">
-  <p class="guest-identity">{{ guest.label }} さん</p>
+  <p class="guest-identity person-name">{{ guest.label }} さん</p>
   {% set submitted_now = message == "写真を受け付けました。締切までは差し替え可能です。" %}
 
   {% if event.submissions_open and submitted_now %}

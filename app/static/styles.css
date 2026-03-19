@@ -9,6 +9,23 @@
   --accent-dark: #661b1b;
   --gold: #c7952d;
   --shadow: 0 20px 60px rgba(90, 59, 37, 0.12);
+  --font-sans-jp:
+    "Hiragino Sans",
+    "Hiragino Sans GB",
+    "STHeiti",
+    "Yu Gothic",
+    "Apple SD Gothic Neo",
+    sans-serif;
+  --font-name-cjk:
+    "Noto Sans CJK JP",
+    "Noto Sans JP",
+    "Hiragino Sans GB",
+    "PingFang SC",
+    "STHeiti",
+    "Hiragino Sans",
+    "Yu Gothic",
+    "Apple SD Gothic Neo",
+    sans-serif;
 }
 
 * {
@@ -21,7 +38,7 @@
 
 body {
   margin: 0;
-  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  font-family: var(--font-sans-jp);
   color: var(--ink);
   background:
     radial-gradient(circle at top right, rgba(241, 209, 170, 0.65), transparent 30%),
@@ -92,10 +109,18 @@ img {
 }
 
 .guest-header h1 {
-  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  font-family: var(--font-sans-jp);
   font-size: clamp(2rem, 7vw, 3rem);
   line-height: 1.28;
   margin: 0;
+}
+
+button {
+  font: inherit;
+}
+
+.person-name {
+  font-family: var(--font-name-cjk);
 }
 
 .guest-header h1:empty,

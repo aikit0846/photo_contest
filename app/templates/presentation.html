@@ -18,7 +18,7 @@
           <div class="focus-card-body">
             <div class="focus-meta">
               <p id="focus-rank" class="focus-rank-badge"></p>
-              <h2 id="focus-name"></h2>
+              <h2 id="focus-name" class="person-name"></h2>
               <p id="focus-score" class="focus-score"></p>
             </div>
             <p id="focus-comment" class="focus-comment"></p>
@@ -62,7 +62,7 @@
                 </div>
                 <div class="podium-card-body">
                   <div class="podium-meta">
-                    <h2>{{ winner.guest.label }}</h2>
+                    <h2 class="person-name">{{ winner.guest.label }}</h2>
                     <p class="podium-score">{{ effective_score(winner) }} pts</p>
                   </div>
                   <p class="podium-comment">{{ winner.score.summary }}</p>

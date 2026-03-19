@@ -70,7 +70,7 @@
       <article class="guest-admin-card">
         <div class="guest-admin-head">
           <div>
-            <h3>{{ guest.label }}</h3>
+            <h3 class="person-name">{{ guest.label }}</h3>
             <p>{{ "新郎側" if guest.side == "groom" else "新婦側" }} / {{ "友人" if guest.group_type == "friend" else "親族" }}</p>
           </div>
           <span class="status-pill {% if guest.eligible %}open{% else %}closed{% endif %}">

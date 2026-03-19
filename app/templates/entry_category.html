@@ -10,7 +10,7 @@
   <div class="name-list">
     {% for guest in guests %}
     <form action="/entry/select/{{ guest.id }}" method="post">
-      <button class="name-button" type="submit">{{ guest.label }}</button>
+      <button class="name-button person-name" type="submit">{{ guest.label }}</button>
     </form>
     {% else %}
     <p class="guest-empty">このグループにはまだ登録がありません。</p>
