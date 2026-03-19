@@ -263,21 +263,18 @@ def restore_submission(
     return RedirectResponse("/admin?message=投稿をランキング対象に戻しました。", status_code=303)
 
 
-@router.post("/submissions/{submission_id}/rank")
-def update_submission_rank(
+@router.post("/submissions/{submission_id}/adjust")
+def update_submission_adjustment(
     submission_id: str,
-    display_order: str | None = Form(default=None),
     admin_score_adjustment: str | None = Form(default=None),
     repository: ContestRepository = Depends(get_repository),
 ) -> RedirectResponse:
     submission = repository.get_submission(submission_id)
     if submission is None:
         raise HTTPException(status_code=404, detail="Submission not found.")
-    display_value = (display_order or "").strip()
     adjustment_value = (admin_score_adjustment or "").strip()
-    repository.update_submission_rank(
+    repository.update_submission_adjustment(
         submission_id,
-        display_order=int(display_value) if display_value else None,
         admin_score_adjustment=float(adjustment_value) if adjustment_value else 0.0,
     )
-    return RedirectResponse("/admin?message=手動調整を保存しました。", status_code=303)
+    return RedirectResponse("/admin?message=点数補正を保存しました。", status_code=303)

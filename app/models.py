@@ -81,7 +81,6 @@ class Submission(Base):
     is_excluded: Mapped[bool] = mapped_column(Boolean, default=False)
     excluded_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_score_adjustment: Mapped[float] = mapped_column(Float, default=0.0)
-    display_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 

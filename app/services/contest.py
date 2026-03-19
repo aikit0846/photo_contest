@@ -229,8 +229,6 @@ def leaderboard(repository: ContestRepository, limit: int | None = None) -> list
     ordered = sorted(
         filtered,
         key=lambda item: (
-            item.display_order is None,
-            item.display_order if item.display_order is not None else 9999,
             -effective_score(item),
             item.created_at,
         ),

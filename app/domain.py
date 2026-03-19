@@ -58,7 +58,6 @@ class SubmissionRecord:
     is_excluded: bool
     excluded_reason: str | None
     admin_score_adjustment: float
-    display_order: int | None
     created_at: datetime
     updated_at: datetime
     score: ScoreRecord | None = None

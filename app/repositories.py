@@ -119,11 +119,10 @@ class ContestRepository(Protocol):
         reason: str | None,
     ) -> SubmissionRecord: ...
 
-    def update_submission_rank(
+    def update_submission_adjustment(
         self,
         submission_id: str,
         *,
-        display_order: int | None,
         admin_score_adjustment: float,
     ) -> SubmissionRecord: ...
 
@@ -194,7 +193,6 @@ class SqliteContestRepository:
             is_excluded=value.is_excluded,
             excluded_reason=value.excluded_reason,
             admin_score_adjustment=float(value.admin_score_adjustment),
-            display_order=value.display_order,
             created_at=_dt(value.created_at),
             updated_at=_dt(value.updated_at),
             score=self._score_record(value.score) if value.score is not None else None,
@@ -447,7 +445,6 @@ class SqliteContestRepository:
                 submission.judge_error = None
                 submission.is_excluded = False
                 submission.excluded_reason = None
-                submission.display_order = None
                 submission.admin_score_adjustment = 0.0
                 if submission.score is not None:
                     session.delete(submission.score)
@@ -528,21 +525,17 @@ class SqliteContestRepository:
             submission = self._existing_submission_for_id(submission_id, session)
             submission.is_excluded = is_excluded
             submission.excluded_reason = reason
-            if is_excluded:
-                submission.display_order = None
             session.commit()
             return self._submission_record(submission)
 
-    def update_submission_rank(
+    def update_submission_adjustment(
         self,
         submission_id: str,
         *,
-        display_order: int | None,
         admin_score_adjustment: float,
     ) -> SubmissionRecord:
         with SessionLocal() as session:
             submission = self._existing_submission_for_id(submission_id, session)
-            submission.display_order = display_order
             submission.admin_score_adjustment = admin_score_adjustment
             session.commit()
             return self._submission_record(submission)
@@ -609,7 +602,6 @@ class FirestoreContestRepository:
             is_excluded=bool(data.get("is_excluded", False)),
             excluded_reason=data.get("excluded_reason"),
             admin_score_adjustment=float(data.get("admin_score_adjustment", 0.0)),
-            display_order=data.get("display_order"),
             created_at=_dt(data.get("created_at")),
             updated_at=_dt(data.get("updated_at")),
             score=self._score_record(document_id, data.get("score")),
@@ -860,7 +852,6 @@ class FirestoreContestRepository:
             "is_excluded": False,
             "excluded_reason": None,
             "admin_score_adjustment": 0.0,
-            "display_order": None,
             "updated_at": now,
             "score": None,
         }
@@ -927,17 +918,14 @@ class FirestoreContestRepository:
             "excluded_reason": reason,
             "updated_at": utcnow(),
         }
-        if is_excluded:
-            patch["display_order"] = None
         doc.set(patch, merge=True)
         data.update(patch)
         return self._submission_record(submission_id, data)
 
-    def update_submission_rank(
+    def update_submission_adjustment(
         self,
         submission_id: str,
         *,
-        display_order: int | None,
         admin_score_adjustment: float,
     ) -> SubmissionRecord:
         doc = self.submissions.document(submission_id)
@@ -946,7 +934,6 @@ class FirestoreContestRepository:
             raise KeyError(submission_id)
         data = snapshot.to_dict()
         patch = {
-            "display_order": display_order,
             "admin_score_adjustment": admin_score_adjustment,
             "updated_at": utcnow(),
         }

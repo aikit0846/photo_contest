@@ -142,11 +142,7 @@
           {% if submission.judge_error %}
           <p class="error-text">Error: {{ submission.judge_error }}</p>
           {% endif %}
-          <form class="compact-grid" action="/admin/submissions/{{ submission.id }}/rank" method="post">
-            <label>
-              表示順位
-              <input type="number" min="1" name="display_order" value="{{ submission.display_order or '' }}" />
-            </label>
+          <form class="compact-grid compact-grid-two" action="/admin/submissions/{{ submission.id }}/adjust" method="post">
             <label>
               点数補正
               <input type="number" step="0.1" name="admin_score_adjustment" value="{{ submission.admin_score_adjustment }}" />
