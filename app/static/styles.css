@@ -447,6 +447,55 @@ button {
   margin-top: 14px;
 }
 
+.guest-feedback-state {
+  margin-bottom: 18px;
+}
+
+.guest-feedback-card {
+  padding: 20px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #fffaf0 0%, #fff4d8 100%);
+  border: 1px solid rgba(199, 149, 45, 0.22);
+  box-shadow: var(--shadow);
+}
+
+.guest-feedback-title {
+  margin: 0 0 12px;
+  font-size: 1.32rem;
+  font-weight: 900;
+  color: #6c4e0f;
+}
+
+.guest-feedback-image {
+  margin-bottom: 14px;
+}
+
+.guest-feedback-image img {
+  aspect-ratio: 4 / 3;
+  border-radius: 18px;
+  object-fit: cover;
+}
+
+.guest-feedback-score {
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.guest-feedback-comment {
+  margin: 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+}
+
+.guest-feedback-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.7;
+}
+
 .guest-form {
   gap: 16px;
 }
@@ -797,6 +846,32 @@ select {
   gap: 4px;
   position: relative;
   overflow: hidden;
+}
+
+.presentation-controls {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  z-index: 34;
+  opacity: 0.4;
+}
+
+.presentation-controls:hover,
+.presentation-controls:focus-within {
+  opacity: 0.9;
+}
+
+.presentation-control-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: rgba(31, 29, 26, 0.68);
+  font: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .presentation-header {

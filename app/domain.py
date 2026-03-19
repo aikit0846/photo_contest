@@ -17,6 +17,7 @@ class EventRecord:
     venue: str
     event_date: str
     submissions_open: bool
+    feedback_released: bool
     provider_preference: str
     model_hint: str | None
     created_at: datetime

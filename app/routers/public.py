@@ -24,6 +24,9 @@ from app.repositories import get_repository
 from app.services.contest import common_entry_url
 from app.services.contest import entry_category_label
 from app.services.contest import entry_category_options
+from app.services.contest import effective_score
+from app.services.contest import feedback_display_score
+from app.services.contest import feedback_score_ceiling
 from app.services.contest import guests_for_category
 from app.services.contest import invite_url
 from app.services.contest import leaderboard
@@ -68,6 +71,25 @@ def join_page(
     guest = repository.get_guest_by_token(token)
     if guest is None:
         raise HTTPException(status_code=404, detail="Invite link not found.")
+    submission = guest.submission
+    feedback_visible = bool(event.feedback_released and submission is not None)
+    feedback_ready = bool(
+        feedback_visible
+        and submission is not None
+        and submission.score is not None
+        and submission.judging_state == "judged"
+    )
+    feedback_ceiling = feedback_score_ceiling(repository) if feedback_visible else None
+    feedback_score = (
+        feedback_display_score(
+            submission,
+            eligible=guest.eligible,
+            ceiling=feedback_ceiling,
+        )
+        if feedback_ready and submission is not None
+        else None
+    )
+    raw_score = effective_score(submission) if feedback_ready and submission is not None else None
     message = request.query_params.get("message")
     error = request.query_params.get("error")
     success_message = "写真を受け付けました。締切までは差し替え可能です。"
@@ -82,6 +104,16 @@ def join_page(
             "message": message,
             "error": error,
             "hide_flash": message == success_message and not error,
+            "feedback_visible": feedback_visible,
+            "feedback_ready": feedback_ready,
+            "feedback_score": feedback_score,
+            "feedback_raw_score": raw_score,
+            "feedback_is_capped": (
+                feedback_ready
+                and feedback_score is not None
+                and raw_score is not None
+                and feedback_score < raw_score
+            ),
         },
     )
     response.set_cookie(

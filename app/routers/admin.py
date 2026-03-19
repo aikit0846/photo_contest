@@ -130,6 +130,34 @@ def update_provider(
     return RedirectResponse("/admin?message=AIプロバイダ設定を更新しました。", status_code=303)
 
 
+@router.post("/event/feedback/release")
+def release_feedback(
+    redirect_to: str | None = Form(default=None),
+    repository: ContestRepository = Depends(get_repository),
+) -> RedirectResponse:
+    repository.update_event(feedback_released=True)
+    target = redirect_to or "/admin"
+    separator = "&" if "?" in target else "?"
+    return RedirectResponse(
+        f"{target}{separator}message=ゲスト向けフィードバックを公開しました。",
+        status_code=303,
+    )
+
+
+@router.post("/event/feedback/hide")
+def hide_feedback(
+    redirect_to: str | None = Form(default=None),
+    repository: ContestRepository = Depends(get_repository),
+) -> RedirectResponse:
+    repository.update_event(feedback_released=False)
+    target = redirect_to or "/admin"
+    separator = "&" if "?" in target else "?"
+    return RedirectResponse(
+        f"{target}{separator}message=ゲスト向けフィードバックを非公開に戻しました。",
+        status_code=303,
+    )
+
+
 @router.post("/guests")
 def add_guest(
     name: str = Form(...),

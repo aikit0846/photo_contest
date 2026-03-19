@@ -28,6 +28,21 @@
     </section>
     {% endif %}
     <main class="presentation-shell">
+      {% if winners %}
+      <section class="presentation-controls">
+        {% if event.feedback_released %}
+        <form method="post" action="/admin/event/feedback/hide">
+          <input type="hidden" name="redirect_to" value="/presentation" />
+          <button class="presentation-control-link" type="submit">フィードバック非公開</button>
+        </form>
+        {% else %}
+        <form method="post" action="/admin/event/feedback/release">
+          <input type="hidden" name="redirect_to" value="/presentation" />
+          <button class="presentation-control-link" type="submit">フィードバック公開</button>
+        </form>
+        {% endif %}
+      </section>
+      {% endif %}
       <header class="presentation-header">
         <p class="eyebrow">AI Photo Contest Result</p>
         <h1>{{ event.title }}</h1>

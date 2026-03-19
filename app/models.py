@@ -29,6 +29,7 @@ class Event(Base):
     venue: Mapped[str] = mapped_column(String(200))
     event_date: Mapped[str] = mapped_column(String(20))
     submissions_open: Mapped[bool] = mapped_column(Boolean, default=True)
+    feedback_released: Mapped[bool] = mapped_column(Boolean, default=False)
     provider_preference: Mapped[str] = mapped_column(String(50), default="auto")
     model_hint: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

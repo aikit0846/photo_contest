@@ -49,6 +49,7 @@ class ContestRepository(Protocol):
         self,
         *,
         submissions_open: bool | None = None,
+        feedback_released: bool | None = None,
         provider_preference: str | None = None,
         model_hint: str | None = None,
     ) -> EventRecord: ...
@@ -152,6 +153,7 @@ class SqliteContestRepository:
             venue=value.venue,
             event_date=value.event_date,
             submissions_open=value.submissions_open,
+            feedback_released=value.feedback_released,
             provider_preference=value.provider_preference,
             model_hint=value.model_hint,
             created_at=_dt(value.created_at),
@@ -226,6 +228,7 @@ class SqliteContestRepository:
                     venue=settings.default_venue,
                     event_date=settings.default_event_date,
                     submissions_open=True,
+                    feedback_released=False,
                     provider_preference=settings.ai_provider,
                     model_hint=None,
                 )
@@ -238,6 +241,7 @@ class SqliteContestRepository:
         self,
         *,
         submissions_open: bool | None = None,
+        feedback_released: bool | None = None,
         provider_preference: str | None = None,
         model_hint: str | None = None,
     ) -> EventRecord:
@@ -248,6 +252,8 @@ class SqliteContestRepository:
                 session.add(event)
             if submissions_open is not None:
                 event.submissions_open = submissions_open
+            if feedback_released is not None:
+                event.feedback_released = feedback_released
             if provider_preference is not None:
                 event.provider_preference = provider_preference
             if model_hint is not None or provider_preference is not None:
@@ -559,6 +565,7 @@ class FirestoreContestRepository:
             venue=data["venue"],
             event_date=data["event_date"],
             submissions_open=bool(data.get("submissions_open", True)),
+            feedback_released=bool(data.get("feedback_released", False)),
             provider_preference=data.get("provider_preference", "auto"),
             model_hint=data.get("model_hint"),
             created_at=_dt(data.get("created_at")),
@@ -635,6 +642,7 @@ class FirestoreContestRepository:
             "venue": settings.default_venue,
             "event_date": settings.default_event_date,
             "submissions_open": True,
+            "feedback_released": False,
             "provider_preference": settings.ai_provider,
             "model_hint": None,
             "created_at": now,
@@ -647,6 +655,7 @@ class FirestoreContestRepository:
         self,
         *,
         submissions_open: bool | None = None,
+        feedback_released: bool | None = None,
         provider_preference: str | None = None,
         model_hint: str | None = None,
     ) -> EventRecord:
@@ -655,6 +664,8 @@ class FirestoreContestRepository:
         patch = {"updated_at": utcnow()}
         if submissions_open is not None:
             patch["submissions_open"] = submissions_open
+        if feedback_released is not None:
+            patch["feedback_released"] = feedback_released
         if provider_preference is not None:
             patch["provider_preference"] = provider_preference
         if model_hint is not None or provider_preference is not None:

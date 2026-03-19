@@ -7,7 +7,26 @@
   <p class="guest-identity person-name">{{ guest.label }} さん</p>
   {% set submitted_now = message == "写真を受け付けました。締切までは差し替え可能です。" %}
 
-  {% if event.submissions_open and submitted_now %}
+  {% if feedback_visible %}
+  <div class="guest-feedback-state">
+    <div class="guest-feedback-card">
+      <p class="guest-feedback-title">結果が公開されました</p>
+      {% if guest.submission %}
+      <div class="guest-feedback-image">
+        <img src="{{ guest.submission.image_url }}" alt="{{ guest.label }} さんの投稿写真" />
+      </div>
+      {% endif %}
+      {% if feedback_ready %}
+      <p class="guest-feedback-score">{{ feedback_score }} 点</p>
+      <p class="guest-feedback-comment">{{ guest.submission.score.summary }}</p>
+      {% else %}
+      <p class="guest-feedback-note">結果を準備中です。少し時間をおいてからもう一度開いてください。</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if event.submissions_open and submitted_now and not feedback_visible %}
   <div class="guest-success-state">
     <div class="guest-success-card">
       <p class="guest-success-title">写真を受け付けました</p>
@@ -19,7 +38,7 @@
   </div>
   {% endif %}
 
-  {% if event.submissions_open %}
+  {% if not feedback_visible and event.submissions_open %}
   <form id="entry-form" class="stack guest-form" action="/join/{{ guest.invite_token }}" method="post" enctype="multipart/form-data" data-max-edge="{{ config.target_image_max_edge }}" data-quality="{{ config.target_image_quality }}">
     <section id="guest-step-1" class="guest-step-card" data-step-state="current">
       <div class="guest-step-head">
@@ -46,7 +65,7 @@
       <button id="submit-button" class="button button-primary guest-submit" type="submit">この写真を送る</button>
     </section>
   </form>
-  {% else %}
+  {% elif not feedback_visible %}
   <div class="guest-callout guest-callout-closed">
     <p class="guest-callout-title">現在は受付を終了しています</p>
   </div>

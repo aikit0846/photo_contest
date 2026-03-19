@@ -169,8 +169,6 @@ def judge_submissions(
         guest = guests.get(submission.guest_id)
         if guest is None:
             continue
-        if submission.is_excluded or not guest.eligible:
-            continue
         if not force and submission.judging_state == "judged" and submission.score is not None:
             continue
 
@@ -213,6 +211,28 @@ def effective_score(submission: SubmissionRecord) -> float:
     if submission.score is None:
         return 0.0
     return round(submission.score.total_score + submission.admin_score_adjustment, 1)
+
+
+def feedback_score_ceiling(repository: ContestRepository) -> float | None:
+    ranked = leaderboard(repository, limit=3)
+    if not ranked:
+        return None
+    return effective_score(ranked[-1])
+
+
+def feedback_display_score(
+    submission: SubmissionRecord,
+    *,
+    eligible: bool,
+    ceiling: float | None,
+) -> float:
+    raw_score = effective_score(submission)
+    if eligible and not submission.is_excluded:
+        return raw_score
+    if ceiling is None:
+        return raw_score
+    upper_bound = round(max(0.0, ceiling - 0.1), 1)
+    return round(min(raw_score, upper_bound), 1)
 
 
 def leaderboard(repository: ContestRepository, limit: int | None = None) -> list[SubmissionRecord]:
