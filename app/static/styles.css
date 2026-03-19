@@ -685,6 +685,19 @@ select {
   gap: 12px;
 }
 
+.submission-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.submission-ranking-note {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
 .compact-grid {
   display: grid;
   gap: 10px;

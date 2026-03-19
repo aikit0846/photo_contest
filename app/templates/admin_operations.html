@@ -108,6 +108,8 @@
     <h2>投稿一覧</h2>
     <div class="submission-list submission-grid">
       {% for submission in submissions %}
+      {% set guest_is_eligible = submission.guest and submission.guest.eligible %}
+      {% set ranking_target = guest_is_eligible and not submission.is_excluded %}
       <article class="submission-card">
         <img src="{{ submission.image_url }}" alt="{{ submission.guest.label }}" />
         <div class="submission-card-body">
@@ -116,10 +118,24 @@
               <h3>{{ submission.guest.label }}</h3>
               <p>{{ "新郎側" if submission.guest.side == "groom" else "新婦側" }} / {{ submission.guest.group_type }}</p>
             </div>
-            <span class="status-pill {% if submission.is_excluded %}closed{% else %}open{% endif %}">
-              {% if submission.is_excluded %}除外{% else %}{{ submission.judging_state }}{% endif %}
-            </span>
+            <div class="submission-statuses">
+              <span class="status-pill {% if submission.is_excluded %}closed{% else %}open{% endif %}">
+                {% if submission.is_excluded %}除外{% else %}{{ submission.judging_state }}{% endif %}
+              </span>
+              <span class="status-pill {% if ranking_target %}open{% else %}closed{% endif %}">
+                {% if ranking_target %}ランキング対象{% else %}ランキング対象外{% endif %}
+              </span>
+            </div>
           </div>
+          {% if not ranking_target %}
+          <p class="submission-ranking-note">
+            {% if not guest_is_eligible %}
+            このゲストはゲスト管理でランキング対象外に設定されています。
+            {% elif submission.is_excluded %}
+            この投稿は個別にランキング対象外へ設定されています{% if submission.excluded_reason %}。理由: {{ submission.excluded_reason }}{% endif %}。
+            {% endif %}
+          </p>
+          {% endif %}
           {% if submission.score %}
           <p><strong>{{ effective_score(submission) }} 点</strong> / {{ submission.score.summary }}</p>
           {% endif %}
@@ -139,13 +155,17 @@
           </form>
           {% if submission.is_excluded %}
           <form action="/admin/submissions/{{ submission.id }}/restore" method="post">
-            <button class="button button-ghost" type="submit">ランキングに戻す</button>
+            <button class="button button-ghost" type="submit">
+              {% if guest_is_eligible %}ランキングに戻す{% else %}投稿個別の除外を解除{% endif %}
+            </button>
           </form>
-          {% else %}
+          {% elif guest_is_eligible %}
           <form class="stack compact" action="/admin/submissions/{{ submission.id }}/exclude" method="post">
             <input type="text" name="reason" placeholder="除外理由 (任意)" />
             <button class="button button-ghost" type="submit">ランキング対象外にする</button>
           </form>
+          {% else %}
+          <p class="helper-text">この投稿はゲスト設定により既にランキング対象外です。対象に戻すにはゲスト管理で切り替えてください。</p>
           {% endif %}
         </div>
       </article>
