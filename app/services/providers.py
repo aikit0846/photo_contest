@@ -38,18 +38,19 @@ class JudgeResult:
 def build_judging_prompt(guest_name: str, table_name: str | None) -> str:
     return (
         "You are judging a wedding reception photo contest. Score the photo in five categories from 0 to 20. "
-        "Focus on how memorable the photo feels for a live wedding audience. "
+        "Focus on how memorable the photo feels for a live wedding audience, but stay grounded in what is clearly visible. "
         "The categories are composition, emotion, story, couple_focus, and wedding_mood. "
         "Prefer photos that make the bride and groom look joyful, natural, and central to the moment. "
+        "Do not invent gifts, travel, relationships, or scenes that are not clearly shown in the image. "
+        "If the bride, groom, or a wedding-related scene is not clearly visible, reflect that honestly in couple_focus and wedding_mood. "
         f"Photographer guest: {guest_name}. Table: {table_name or 'unknown'}. "
         'Return strict JSON with keys "composition", "emotion", "story", "couple_focus", "wedding_mood", '
-        'and "summary". Summary must be two or three short Japanese sentences. '
-        "The tone should be warm, celebratory, and lightly witty. "
-        "Aim for a comment that could get a small laugh or a warm reaction if read aloud at a wedding reception. "
-        "Use concrete observations about the photo first, then add one playful but kind line inspired by the atmosphere of the reception. "
+        'and "summary". Summary must be two short Japanese sentences. '
+        "The tone should be warm, natural, and lightly witty, but not overly flattering. "
+        "Use concrete observations about the photo first, then add one gentle line that could get a small smile if read aloud at a wedding reception. "
         "Avoid sarcasm, harsh jokes, or teasing about appearance, age, mistakes, or awkwardness. "
         "Avoid directly mentioning rank or comparing the photo with other submissions. "
-        "End with a natural, uplifting sentence that feels appropriate for a wedding celebration."
+        "Keep the wording modest and believable rather than exaggerated."
     )
 
 
@@ -180,7 +181,7 @@ class GeminiJudgeProvider(BaseJudgeProvider):
                     }
                 ],
                 "generationConfig": {
-                    "temperature": 0.2,
+                    "temperature": 0.1,
                     "responseMimeType": "application/json",
                 },
             },
