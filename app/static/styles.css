@@ -850,15 +850,15 @@ select {
 
 .presentation-controls {
   position: absolute;
-  top: 6px;
-  right: 10px;
+  right: 8px;
+  bottom: 4px;
   z-index: 34;
-  opacity: 0.4;
+  opacity: 0.26;
 }
 
 .presentation-controls:hover,
 .presentation-controls:focus-within {
-  opacity: 0.9;
+  opacity: 0.78;
 }
 
 .presentation-control-link {
@@ -866,12 +866,17 @@ select {
   border: 0;
   background: transparent;
   padding: 0;
-  color: rgba(31, 29, 26, 0.68);
+  color: rgba(31, 29, 26, 0.52);
   font: inherit;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-decoration: underline;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.presentation-control-link:hover,
+.presentation-control-link:focus-visible {
+  text-decoration: underline;
 }
 
 .presentation-header {
