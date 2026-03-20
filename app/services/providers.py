@@ -46,7 +46,7 @@ def build_judging_prompt(guest_name: str, table_name: str | None) -> str:
         f"Photographer guest: {guest_name}. Table: {table_name or 'unknown'}. "
         'Return strict JSON with keys "composition", "emotion", "story", "couple_focus", "wedding_mood", '
         'and "summary". Summary must be exactly two short Japanese sentences. '
-        "The tone should be mainly analytical and witty, but warm and natural,"
+        "The tone should be mainly analytical and witty, as well as warm and natural,"
         "The summary must match the score level and should not sound more positive than the score suggests. "
         "Avoid directly mentioning scores. "
     )
