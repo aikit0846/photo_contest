@@ -192,60 +192,6 @@ class GeminiJudgeProvider(BaseJudgeProvider):
         return parse_result_payload(json.loads(text), self.provider_name, self.model_name)
 
 
-class AnthropicJudgeProvider(BaseJudgeProvider):
-    provider_name = "anthropic"
-
-    def __init__(self, settings: Settings, model_name: str | None = None) -> None:
-        super().__init__(settings, model_name or settings.anthropic_model)
-
-    def judge(
-        self,
-        image_bytes: bytes,
-        mime_type: str,
-        guest_name: str,
-        table_name: str | None,
-    ) -> JudgeResult:
-        if not self.settings.anthropic_api_key:
-            raise RuntimeError("ANTHROPIC_API_KEY is not configured.")
-
-        prompt = build_judging_prompt(guest_name, table_name)
-        image_b64 = base64.b64encode(image_bytes).decode("ascii")
-        response = httpx.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": self.settings.anthropic_api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json={
-                "model": self.model_name,
-                "max_tokens": 400,
-                "temperature": 0.2,
-                "system": "Judge wedding photos and return only strict JSON.",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": image_b64,
-                                },
-                            },
-                        ],
-                    }
-                ],
-            },
-            timeout=60,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        text = payload["content"][0]["text"]
-        return parse_result_payload(json.loads(text), self.provider_name, self.model_name)
-
-
 class OllamaJudgeProvider(BaseJudgeProvider):
     provider_name = "ollama"
 
@@ -298,12 +244,10 @@ def build_provider(settings: Settings, preference: str | None, model_hint: str |
         return MockJudgeProvider(settings, model_hint)
     if selected == "gemini":
         return GeminiJudgeProvider(settings, model_hint or settings.google_model)
-    if selected == "anthropic":
-        return AnthropicJudgeProvider(settings, model_hint or settings.anthropic_model)
     if selected == "ollama":
         return OllamaJudgeProvider(settings, model_hint or settings.ollama_model)
     return MockJudgeProvider(settings, model_hint)
 
 
 def provider_options() -> list[str]:
-    return ["auto", "mock", "gemini", "anthropic", "ollama"]
+    return ["auto", "mock", "gemini", "ollama"]

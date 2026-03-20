@@ -30,8 +30,6 @@ class Settings(BaseSettings):
     ai_provider: str = "auto"
     google_api_key: str | None = None
     google_model: str = "gemini-2.5-flash"
-    anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-3-5-haiku-latest"
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "gemma3:4b"
 

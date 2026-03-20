@@ -55,8 +55,6 @@ def guests_for_category(repository: ContestRepository, category_key: str) -> lis
 def default_model_hint(settings: Settings, provider_name: str) -> str | None:
     if provider_name == "gemini":
         return settings.google_model
-    if provider_name == "anthropic":
-        return settings.anthropic_model
     if provider_name == "ollama":
         return settings.ollama_model
     return None
@@ -262,7 +260,6 @@ def provider_status(settings: Settings) -> dict[str, str]:
         "auto": "Gemini API key があれば Gemini、なければローカル heuristic にフォールバック",
         "mock": "APIキー不要。ローカルの簡易スコアリング",
         "gemini": "Google Gemini API を使って採点",
-        "anthropic": "Claude API を使って採点",
         "ollama": "ローカルの Ollama モデルを使って採点",
     }
 

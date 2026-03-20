@@ -9,7 +9,7 @@ Docker を使わず、`Cloud Shell` から `gcloud run deploy --source .` する
 - `BUCKET_NAME=wedding-photo-contest-20260419-assets`
 - `SERVICE_NAME=wedding-photo-contest`
 - `ADMIN_PASSWORD`
-- 使うなら `GOOGLE_API_KEY` / `ANTHROPIC_API_KEY`
+- 使うなら `GOOGLE_API_KEY`
 
 ## このプロジェクトで使う値
 
@@ -109,7 +109,7 @@ echo "$APP_URL"
 
 #### いまのおすすめ: API キー未設定のまま `mock` で再デプロイ
 
-モデル未確定で、`GOOGLE_API_KEY` と `ANTHROPIC_API_KEY` をまだ作っていないなら、この形がいちばん安全です。
+モデル未確定で、`GOOGLE_API_KEY` をまだ作っていないなら、この形がいちばん安全です。
 
 ```bash
 gcloud run deploy "$SERVICE_NAME" \
@@ -124,13 +124,13 @@ gcloud run deploy "$SERVICE_NAME" \
   --min-instances 0 \
   --timeout 60 \
   --set-env-vars APP_URL="$APP_URL",DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=mock \
-  --remove-secrets GOOGLE_API_KEY,ANTHROPIC_API_KEY \
+  --remove-secrets GOOGLE_API_KEY \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest
 ```
 
-#### API キーを使う場合の再デプロイ
+#### Google API キーを使う場合の再デプロイ
 
-`Gemini` や `Anthropic` を使う段階になったら、次のように secret を追加します。
+`Gemini` を使う段階になったら、次のように secret を追加します。
 
 `APP_URL` が変わらないなら、基本的にはこのコマンドで再デプロイできます。
 
@@ -147,7 +147,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --min-instances 0 \
   --timeout 60 \
   --set-env-vars APP_URL="$APP_URL",DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=auto \
-  --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
+  --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest
 ```
 
 ### 5. デプロイ後の確認
@@ -222,7 +222,6 @@ gcloud storage buckets add-iam-policy-binding "gs://$BUCKET_NAME" \
 ```bash
 printf 'YOUR_ADMIN_PASSWORD' | gcloud secrets create ADMIN_PASSWORD --data-file=-
 printf 'YOUR_GOOGLE_API_KEY' | gcloud secrets create GOOGLE_API_KEY --data-file=-
-printf 'YOUR_ANTHROPIC_API_KEY' | gcloud secrets create ANTHROPIC_API_KEY --data-file=-
 ```
 
 ```bash
@@ -231,10 +230,6 @@ gcloud secrets add-iam-policy-binding ADMIN_PASSWORD \
   --role="roles/secretmanager.secretAccessor"
 
 gcloud secrets add-iam-policy-binding GOOGLE_API_KEY \
-  --member="serviceAccount:photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding ANTHROPIC_API_KEY \
   --member="serviceAccount:photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
@@ -283,11 +278,11 @@ gcloud run deploy "$SERVICE_NAME" \
   --min-instances 0 \
   --timeout 60 \
   --set-env-vars APP_URL=https://example.invalid,DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=mock \
-  --remove-secrets GOOGLE_API_KEY,ANTHROPIC_API_KEY \
+  --remove-secrets GOOGLE_API_KEY \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest
 ```
 
-あとから `Gemini` や `Anthropic` を使うときだけ、secret を作成して `--update-secrets GOOGLE_API_KEY=... , ANTHROPIC_API_KEY=...` を追加してください。
+あとから `Gemini` を使うときだけ、secret を作成して `--update-secrets GOOGLE_API_KEY=...` を追加してください。
 
 ### 3. URL 取得
 
@@ -319,11 +314,11 @@ gcloud run deploy "$SERVICE_NAME" \
   --min-instances 0 \
   --timeout 60 \
   --set-env-vars APP_URL="$APP_URL",DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=mock \
-  --remove-secrets GOOGLE_API_KEY,ANTHROPIC_API_KEY \
+  --remove-secrets GOOGLE_API_KEY \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest
 ```
 
-API キーを使う段階になったら、ここでも `AI_PROVIDER=auto` などに変えて `GOOGLE_API_KEY` / `ANTHROPIC_API_KEY` を足します。
+API キーを使う段階になったら、ここでも `AI_PROVIDER=auto` などに変えて `GOOGLE_API_KEY` を足します。
 
 ## デプロイ後の確認
 
@@ -353,7 +348,7 @@ Cloud Run には、外部公開 URL では使えない予約 URL パスがあり
 次のようなエラーが出ることがあります。
 
 - `Permission denied on secret ... GOOGLE_API_KEY`
-- `Permission denied on secret ... ANTHROPIC_API_KEY`
+- `Permission denied on secret ... GOOGLE_API_KEY`
 
 これは Cloud Run の service account に、その secret の `Secret Accessor` 権限が付いていないのが原因です。
 
@@ -363,15 +358,11 @@ Cloud Run には、外部公開 URL では使えない予約 URL パスがあり
 gcloud secrets add-iam-policy-binding GOOGLE_API_KEY \
   --member="serviceAccount:photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding ANTHROPIC_API_KEY \
-  --member="serviceAccount:photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
 ```
 
 その後、もう一度 `gcloud run deploy ...` を実行してください。
 
-もし今回は API キーを使わず、`mock` だけでよいなら、deploy コマンドの `--update-secrets` から `GOOGLE_API_KEY` と `ANTHROPIC_API_KEY` を外すだけでなく、`--remove-secrets GOOGLE_API_KEY,ANTHROPIC_API_KEY` も付けて既存の参照を消してください。
+もし今回は API キーを使わず、`mock` だけでよいなら、deploy コマンドの `--update-secrets` から `GOOGLE_API_KEY` を外すだけでなく、`--remove-secrets GOOGLE_API_KEY` も付けて既存の参照を消してください。
 
 ## ローカルと本番の切り替え
 

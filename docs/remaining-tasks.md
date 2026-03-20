@@ -8,7 +8,6 @@
 - Cloud Run URL:
   - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app`
 - `GOOGLE_API_KEY` は設定済み
-- `ANTHROPIC_API_KEY` は未設定
 - 本番用ゲストとテストユーザーの登録は完了
 - テストユーザーは直前まで残して運用確認に使う方針
 - AI 方針:

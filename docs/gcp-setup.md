@@ -187,14 +187,12 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 - `ADMIN_PASSWORD`
 - `GOOGLE_API_KEY`
-- `ANTHROPIC_API_KEY`
 
 作成例:
 
 ```bash
 printf 'YOUR_ADMIN_PASSWORD' | gcloud secrets create ADMIN_PASSWORD --data-file=-
 printf 'YOUR_GOOGLE_API_KEY' | gcloud secrets create GOOGLE_API_KEY --data-file=-
-printf 'YOUR_ANTHROPIC_API_KEY' | gcloud secrets create ANTHROPIC_API_KEY --data-file=-
 ```
 
 Cloud Run 実行用 service account に secret access を付けます。
@@ -205,10 +203,6 @@ gcloud secrets add-iam-policy-binding ADMIN_PASSWORD \
   --role="roles/secretmanager.secretAccessor"
 
 gcloud secrets add-iam-policy-binding GOOGLE_API_KEY \
-  --member="serviceAccount:photo-contest-run@PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding ANTHROPIC_API_KEY \
   --member="serviceAccount:photo-contest-run@PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
