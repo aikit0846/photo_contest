@@ -45,8 +45,8 @@ def build_judging_prompt(guest_name: str, table_name: str | None) -> str:
         "If the bride, groom, or a wedding-related scene is not clearly visible, reflect that honestly in couple_focus and wedding_mood. "
         f"Photographer guest: {guest_name}. Table: {table_name or 'unknown'}. "
         'Return strict JSON with keys "composition", "emotion", "story", "couple_focus", "wedding_mood", '
-        'and "summary". Summary must be exactly one Japanese sentence between 35 and 38 characters. '
-        "The tone should be warm, natural, and lightly witty, but it must match the score level and should not sound more positive than the score suggests. "
+        'and "summary". Summary must be exactly two short Japanese sentences. '
+        "The tone should be warm, natural, and very witty, but it must match the score level and should not sound more positive than the score suggests. "
         "Avoid directly mentioning scores. "
     )
 
