@@ -177,7 +177,6 @@ def judge_submissions(
             result = provider.judge(
                 image_bytes=image_bytes,
                 mime_type=submission.mime_type,
-                caption=submission.caption,
                 guest_name=guest.label,
                 table_name=guest.table_name,
             )

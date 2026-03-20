@@ -35,16 +35,21 @@ class JudgeResult:
         )
 
 
-def build_judging_prompt(caption: str | None, guest_name: str, table_name: str | None) -> str:
-    caption_text = caption.strip() if caption else "No caption provided."
+def build_judging_prompt(guest_name: str, table_name: str | None) -> str:
     return (
         "You are judging a wedding reception photo contest. Score the photo in five categories from 0 to 20. "
         "Focus on how memorable the photo feels for a live wedding audience. "
         "The categories are composition, emotion, story, couple_focus, and wedding_mood. "
         "Prefer photos that make the bride and groom look joyful, natural, and central to the moment. "
-        f"Photographer guest: {guest_name}. Table: {table_name or 'unknown'}. Caption: {caption_text}. "
+        f"Photographer guest: {guest_name}. Table: {table_name or 'unknown'}. "
         'Return strict JSON with keys "composition", "emotion", "story", "couple_focus", "wedding_mood", '
-        'and "summary". Summary must be one short Japanese sentence.'
+        'and "summary". Summary must be two or three short Japanese sentences. '
+        "The tone should be warm, celebratory, and lightly witty. "
+        "Aim for a comment that could get a small laugh or a warm reaction if read aloud at a wedding reception. "
+        "Use concrete observations about the photo first, then add one playful but kind line inspired by the atmosphere of the reception. "
+        "Avoid sarcasm, harsh jokes, or teasing about appearance, age, mistakes, or awkwardness. "
+        "Avoid directly mentioning rank or comparing the photo with other submissions. "
+        "End with a natural, uplifting sentence that feels appropriate for a wedding celebration."
     )
 
 
@@ -77,7 +82,6 @@ class BaseJudgeProvider:
         self,
         image_bytes: bytes,
         mime_type: str,
-        caption: str | None,
         guest_name: str,
         table_name: str | None,
     ) -> JudgeResult:
@@ -94,17 +98,15 @@ class MockJudgeProvider(BaseJudgeProvider):
         self,
         image_bytes: bytes,
         mime_type: str,
-        caption: str | None,
         guest_name: str,
         table_name: str | None,
     ) -> JudgeResult:
         metrics = analyze_image(image_bytes)
-        caption_bonus = min(len((caption or "").strip()) / 20.0, 2.0)
         hash_bias = int(metrics.sha256[:2], 16) / 255.0
 
         composition = clamp_score(8 + (metrics.contrast / 10.0) + (metrics.sharpness / 20.0))
-        emotion = clamp_score(7 + (metrics.brightness / 22.0) + caption_bonus + hash_bias)
-        story = clamp_score(6 + (metrics.entropy * 1.7) + caption_bonus)
+        emotion = clamp_score(7 + (metrics.brightness / 22.0) + hash_bias)
+        story = clamp_score(6 + (metrics.entropy * 1.7))
         couple_focus = clamp_score(7 + (metrics.sharpness / 18.0) + (metrics.brightness / 30.0))
         wedding_mood = clamp_score(8 + (metrics.saturation / 18.0) + (metrics.brightness / 24.0))
 
@@ -144,14 +146,13 @@ class GeminiJudgeProvider(BaseJudgeProvider):
         self,
         image_bytes: bytes,
         mime_type: str,
-        caption: str | None,
         guest_name: str,
         table_name: str | None,
     ) -> JudgeResult:
         if not self.settings.google_api_key:
             raise RuntimeError("GOOGLE_API_KEY is not configured.")
 
-        prompt = build_judging_prompt(caption, guest_name, table_name)
+        prompt = build_judging_prompt(guest_name, table_name)
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
         response = httpx.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent",
@@ -201,14 +202,13 @@ class AnthropicJudgeProvider(BaseJudgeProvider):
         self,
         image_bytes: bytes,
         mime_type: str,
-        caption: str | None,
         guest_name: str,
         table_name: str | None,
     ) -> JudgeResult:
         if not self.settings.anthropic_api_key:
             raise RuntimeError("ANTHROPIC_API_KEY is not configured.")
 
-        prompt = build_judging_prompt(caption, guest_name, table_name)
+        prompt = build_judging_prompt(guest_name, table_name)
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
         response = httpx.post(
             "https://api.anthropic.com/v1/messages",
@@ -256,11 +256,10 @@ class OllamaJudgeProvider(BaseJudgeProvider):
         self,
         image_bytes: bytes,
         mime_type: str,
-        caption: str | None,
         guest_name: str,
         table_name: str | None,
     ) -> JudgeResult:
-        prompt = build_judging_prompt(caption, guest_name, table_name)
+        prompt = build_judging_prompt(guest_name, table_name)
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
         response = httpx.post(
             f"{self.settings.ollama_base_url.rstrip('/')}/api/chat",
