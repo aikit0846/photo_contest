@@ -17,11 +17,6 @@
     "Apple SD Gothic Neo",
     sans-serif;
   --font-name-cjk:
-    "Noto Sans CJK JP",
-    "Noto Sans JP",
-    "Hiragino Sans GB",
-    "PingFang SC",
-    "STHeiti",
     "Hiragino Sans",
     "Yu Gothic",
     "Apple SD Gothic Neo",
@@ -121,6 +116,7 @@ button {
 
 .person-name {
   font-family: var(--font-name-cjk);
+  font-weight: 600 !important;
 }
 
 .guest-header h1:empty,
