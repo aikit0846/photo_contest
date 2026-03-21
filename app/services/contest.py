@@ -293,16 +293,18 @@ def score_breakdown(
 def feedback_comments(submission: SubmissionRecord) -> list[str]:
     if submission.score is None:
         return []
+    positive = submission.score.positive_comment_1 or submission.score.summary
+    improvement = submission.score.improvement_comment
     return [
-        submission.score.positive_comment_1,
-        submission.score.improvement_comment,
+        positive,
+        improvement,
     ]
 
 
 def short_comment(submission: SubmissionRecord) -> str:
     if submission.score is None:
         return ""
-    return submission.score.positive_comment_1
+    return submission.score.positive_comment_1 or submission.score.summary
 
 
 def podium_comment(submission: SubmissionRecord, rank: int) -> str:
@@ -313,7 +315,7 @@ def podium_comment_lines(submission: SubmissionRecord, rank: int) -> list[str]:
     if submission.score is None:
         return []
     positives = [
-        submission.score.positive_comment_1,
+        submission.score.positive_comment_1 or submission.score.summary,
         submission.score.positive_comment_2,
         submission.score.positive_comment_3,
     ]
