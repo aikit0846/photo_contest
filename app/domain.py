@@ -36,6 +36,10 @@ class ScoreRecord:
     story_score: float
     couple_focus_score: float
     wedding_mood_score: float
+    positive_comment_1: str
+    positive_comment_2: str
+    positive_comment_3: str
+    improvement_comment: str
     summary: str
     raw_payload: str
     judged_at: datetime
@@ -58,6 +62,7 @@ class SubmissionRecord:
     judge_error: str | None
     is_excluded: bool
     excluded_reason: str | None
+    system_score_adjustment: float
     admin_score_adjustment: float
     created_at: datetime
     updated_at: datetime

@@ -93,6 +93,16 @@ def invite_url(settings: Settings, guest: GuestRecord) -> str:
     return f"{settings.app_url.rstrip('/')}/join/{quote_plus(guest.invite_token)}"
 
 
+def ranking_target(submission: SubmissionRecord, guest: GuestRecord | None) -> bool:
+    return bool(
+        guest is not None
+        and guest.eligible
+        and not submission.is_excluded
+        and submission.score is not None
+        and submission.judging_state == "judged"
+    )
+
+
 def _pick_extension(upload: UploadFile) -> str:
     suffix = Path(upload.filename or "").suffix.lower()
     if suffix in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic"}:
@@ -191,6 +201,10 @@ def judge_submissions(
                     story_score=result.story,
                     couple_focus_score=result.couple_focus,
                     wedding_mood_score=result.wedding_mood,
+                    positive_comment_1=result.positive_comment_1,
+                    positive_comment_2=result.positive_comment_2,
+                    positive_comment_3=result.positive_comment_3,
+                    improvement_comment=result.improvement_comment,
                     summary=result.summary,
                     raw_payload=result.raw_payload,
                     judged_at=utcnow(),
@@ -201,13 +215,169 @@ def judge_submissions(
             repository.mark_submission_failed(submission.id, str(exc))
             errors.append(f"{guest.label}: {exc}")
 
+    refresh_balanced_scores(repository)
     return judged, errors, provider.display_name
 
 
 def effective_score(submission: SubmissionRecord) -> float:
     if submission.score is None:
         return 0.0
-    return round(submission.score.total_score + submission.admin_score_adjustment, 1)
+    return round(
+        submission.score.total_score
+        + submission.system_score_adjustment
+        + submission.admin_score_adjustment,
+        1,
+    )
+
+
+def base_score(submission: SubmissionRecord) -> float:
+    if submission.score is None:
+        return 0.0
+    return round(
+        submission.score.total_score
+        + submission.admin_score_adjustment,
+        1,
+    )
+
+
+def score_breakdown(
+    submission: SubmissionRecord,
+    *,
+    target_total: float | None = None,
+) -> list[tuple[str, float]]:
+    if submission.score is None:
+        return []
+    labels = ["構図", "表情", "物語性", "主役感", "祝祭感"]
+    values = [
+        round(submission.score.composition_score, 1),
+        round(submission.score.emotion_score, 1),
+        round(submission.score.story_score, 1),
+        round(submission.score.couple_focus_score, 1),
+        round(submission.score.wedding_mood_score, 1),
+    ]
+    if target_total is None:
+        target_total = effective_score(submission)
+
+    units = [int(round(value * 10)) for value in values]
+    target_units = int(round(target_total * 10))
+    diff_units = target_units - sum(units)
+    order = sorted(range(len(units)), key=lambda index: units[index], reverse=True)
+
+    while diff_units > 0:
+        changed = False
+        for index in order:
+            if units[index] < 200:
+                units[index] += 1
+                diff_units -= 1
+                changed = True
+                if diff_units == 0:
+                    break
+        if not changed:
+            break
+
+    while diff_units < 0:
+        changed = False
+        for index in order:
+            if units[index] > 0:
+                units[index] -= 1
+                diff_units += 1
+                changed = True
+                if diff_units == 0:
+                    break
+        if not changed:
+            break
+
+    return list(zip(labels, [unit / 10 for unit in units]))
+
+
+def feedback_comments(submission: SubmissionRecord) -> list[str]:
+    if submission.score is None:
+        return []
+    return [
+        submission.score.positive_comment_1,
+        submission.score.improvement_comment,
+    ]
+
+
+def short_comment(submission: SubmissionRecord) -> str:
+    if submission.score is None:
+        return ""
+    return submission.score.positive_comment_1
+
+
+def podium_comment(submission: SubmissionRecord, rank: int) -> str:
+    return " ".join(podium_comment_lines(submission, rank))
+
+
+def podium_comment_lines(submission: SubmissionRecord, rank: int) -> list[str]:
+    if submission.score is None:
+        return []
+    positives = [
+        submission.score.positive_comment_1,
+        submission.score.positive_comment_2,
+        submission.score.positive_comment_3,
+    ]
+    improvement = submission.score.improvement_comment
+    if rank == 1:
+        parts = positives
+    elif rank == 2:
+        parts = positives[:2] + [improvement]
+    else:
+        parts = [submission.score.positive_comment_1, improvement]
+    return [part for part in parts if part]
+
+
+def refresh_balanced_scores(repository: ContestRepository) -> None:
+    submissions = repository.list_submissions()
+    for submission in submissions:
+        if submission.system_score_adjustment != 0.0:
+            repository.update_submission_system_adjustment(
+                submission.id,
+                system_score_adjustment=0.0,
+            )
+
+    guests = {guest.id: guest for guest in repository.list_guests()}
+    refreshed_submissions = repository.list_submissions()
+    target_submissions = [
+        submission
+        for submission in refreshed_submissions
+        if ranking_target(submission, guests.get(submission.guest_id))
+    ]
+
+    ordered = sorted(
+        target_submissions,
+        key=lambda item: (
+            -base_score(item),
+            item.created_at,
+        ),
+    )
+    if len(ordered) < 3:
+        return
+
+    top_three = ordered[:3]
+    top_sides = {guests[item.guest_id].side for item in top_three if item.guest_id in guests}
+    if len(top_sides) > 1:
+        return
+
+    required_side = "bride" if next(iter(top_sides)) == "groom" else "groom"
+    alternate = next(
+        (
+            submission
+            for submission in ordered[3:]
+            if guests.get(submission.guest_id) and guests[submission.guest_id].side == required_side
+        ),
+        None,
+    )
+    if alternate is None:
+        return
+
+    third_score = base_score(top_three[2])
+    target_score = round(third_score + 0.1, 1)
+    system_adjustment = round(target_score - base_score(alternate), 1)
+    repository.update_submission_system_adjustment(
+        alternate.id,
+        system_score_adjustment=system_adjustment,
+    )
 
 
 def feedback_score_ceiling(repository: ContestRepository) -> float | None:
@@ -238,9 +408,7 @@ def leaderboard(repository: ContestRepository, limit: int | None = None) -> list
     filtered = []
     for item in submissions:
         guest = guests.get(item.guest_id)
-        if guest is None:
-            continue
-        if item.is_excluded or not guest.eligible or item.score is None or item.judging_state != "judged":
+        if not ranking_target(item, guest):
             continue
         filtered.append(item)
     ordered = sorted(

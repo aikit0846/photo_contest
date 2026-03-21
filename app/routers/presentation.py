@@ -13,6 +13,7 @@ from app.repositories import get_repository
 from app.services.contest import effective_score
 from app.services.contest import get_event
 from app.services.contest import leaderboard
+from app.services.contest import podium_comment
 
 
 router = APIRouter()
@@ -34,5 +35,6 @@ def presentation(
             "event": event,
             "winners": winners,
             "effective_score": effective_score,
+            "podium_comment": podium_comment,
         },
     )

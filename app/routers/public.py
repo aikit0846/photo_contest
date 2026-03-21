@@ -25,12 +25,17 @@ from app.services.contest import common_entry_url
 from app.services.contest import entry_category_label
 from app.services.contest import entry_category_options
 from app.services.contest import effective_score
+from app.services.contest import feedback_comments
 from app.services.contest import feedback_display_score
 from app.services.contest import feedback_score_ceiling
 from app.services.contest import guests_for_category
 from app.services.contest import invite_url
 from app.services.contest import leaderboard
+from app.services.contest import podium_comment
+from app.services.contest import podium_comment_lines
 from app.services.contest import save_submission
+from app.services.contest import score_breakdown
+from app.services.contest import short_comment
 from app.services.contest import get_event
 from app.storage import BaseImageStorage
 from app.storage import get_storage
@@ -55,6 +60,7 @@ def home(
             "request": request,
             "event": event,
             "top_entries": top_entries,
+            "short_comment": short_comment,
             "message": request.query_params.get("message"),
         },
     )
@@ -90,6 +96,20 @@ def join_page(
         else None
     )
     raw_score = effective_score(submission) if feedback_ready and submission is not None else None
+    ranked = leaderboard(repository, limit=3) if feedback_visible else []
+    rank_lookup = {item.id: index + 1 for index, item in enumerate(ranked)}
+    feedback_rank = rank_lookup.get(submission.id) if submission is not None else None
+    feedback_lines = (
+        podium_comment_lines(submission, feedback_rank)
+        if feedback_ready and submission is not None and feedback_rank is not None
+        else feedback_comments(submission) if feedback_ready and submission is not None
+        else []
+    )
+    feedback_breakdown = (
+        score_breakdown(submission, target_total=feedback_score)
+        if feedback_ready and submission is not None and feedback_score is not None
+        else []
+    )
     message = request.query_params.get("message")
     error = request.query_params.get("error")
     success_message = "写真を受け付けました。締切までは差し替え可能です。"
@@ -114,6 +134,9 @@ def join_page(
                 and raw_score is not None
                 and feedback_score < raw_score
             ),
+            "feedback_rank": feedback_rank,
+            "feedback_lines": [line for line in feedback_lines if line],
+            "feedback_breakdown": feedback_breakdown,
         },
     )
     response.set_cookie(

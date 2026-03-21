@@ -21,8 +21,11 @@ from app.services.contest import event_stats
 from app.services.contest import get_event
 from app.services.contest import judge_submissions
 from app.services.contest import leaderboard
+from app.services.contest import podium_comment
+from app.services.contest import refresh_balanced_scores
 from app.services.contest import provider_choices
 from app.services.contest import provider_status
+from app.services.contest import short_comment
 from app.storage import BaseImageStorage
 from app.storage import get_storage
 
@@ -39,6 +42,16 @@ def dashboard(
 ) -> HTMLResponse:
     event = get_event(repository, settings)
     submissions = repository.list_submissions()
+    ranking_submissions = [
+        submission
+        for submission in submissions
+        if submission.guest is not None and submission.guest.eligible and not submission.is_excluded
+    ]
+    non_ranking_submissions = [
+        submission
+        for submission in submissions
+        if submission.guest is None or not submission.guest.eligible or submission.is_excluded
+    ]
     top_entries = leaderboard(repository, limit=10)
     return templates.TemplateResponse(
         "admin_operations.html",
@@ -46,11 +59,15 @@ def dashboard(
             "request": request,
             "event": event,
             "submissions": submissions,
+            "ranking_submissions": ranking_submissions,
+            "non_ranking_submissions": non_ranking_submissions,
             "top_entries": top_entries,
             "stats": event_stats(repository),
             "provider_choices": provider_choices(),
             "provider_status": provider_status(settings),
             "effective_score": effective_score,
+            "podium_comment": podium_comment,
+            "short_comment": short_comment,
             "admin_section": "operations",
             "message": request.query_params.get("message"),
             "error": request.query_params.get("error"),
@@ -191,6 +208,7 @@ def toggle_guest_eligibility(
     if guest is None:
         raise HTTPException(status_code=404, detail="Guest not found.")
     updated = repository.set_guest_eligibility(guest_id, not guest.eligible)
+    refresh_balanced_scores(repository)
     state = "抽選対象" if updated.eligible else "対象外"
     return RedirectResponse(f"/admin/guests?message={guest.label} を{state}にしました。", status_code=303)
 
@@ -220,6 +238,7 @@ def update_guest(
         eligible=eligible == "on",
         notes=notes,
     )
+    refresh_balanced_scores(repository)
     return RedirectResponse(f"/admin/guests?message={guest.label} を更新しました。", status_code=303)
 
 
@@ -235,6 +254,7 @@ def delete_guest(
     if guest.submission is not None:
         storage.delete_image(guest.submission.storage_key)
     repository.delete_guest(guest_id)
+    refresh_balanced_scores(repository)
     return RedirectResponse(f"/admin/guests?message={guest.label} を削除しました。", status_code=303)
 
 
@@ -276,6 +296,7 @@ def exclude_submission(
         is_excluded=True,
         reason=(reason or "").strip() or "Admin excluded",
     )
+    refresh_balanced_scores(repository)
     return RedirectResponse("/admin?message=投稿をランキング対象外にしました。", status_code=303)
 
 
@@ -288,6 +309,7 @@ def restore_submission(
     if submission is None:
         raise HTTPException(status_code=404, detail="Submission not found.")
     repository.set_submission_exclusion(submission_id, is_excluded=False, reason=None)
+    refresh_balanced_scores(repository)
     return RedirectResponse("/admin?message=投稿をランキング対象に戻しました。", status_code=303)
 
 
@@ -305,4 +327,5 @@ def update_submission_adjustment(
         submission_id,
         admin_score_adjustment=float(adjustment_value) if adjustment_value else 0.0,
     )
+    refresh_balanced_scores(repository)
     return RedirectResponse("/admin?message=点数補正を保存しました。", status_code=303)

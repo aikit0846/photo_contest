@@ -127,6 +127,13 @@ class ContestRepository(Protocol):
         admin_score_adjustment: float,
     ) -> SubmissionRecord: ...
 
+    def update_submission_system_adjustment(
+        self,
+        submission_id: str,
+        *,
+        system_score_adjustment: float,
+    ) -> SubmissionRecord: ...
+
 
 class SqliteContestRepository:
     def _guest_stub(self, value: sql_models.Guest) -> GuestRecord:
@@ -172,6 +179,10 @@ class SqliteContestRepository:
             story_score=float(value.story_score),
             couple_focus_score=float(value.couple_focus_score),
             wedding_mood_score=float(value.wedding_mood_score),
+            positive_comment_1=value.positive_comment_1,
+            positive_comment_2=value.positive_comment_2,
+            positive_comment_3=value.positive_comment_3,
+            improvement_comment=value.improvement_comment,
             summary=value.summary,
             raw_payload=value.raw_payload,
             judged_at=_dt(value.judged_at),
@@ -194,6 +205,7 @@ class SqliteContestRepository:
             judge_error=value.judge_error,
             is_excluded=value.is_excluded,
             excluded_reason=value.excluded_reason,
+            system_score_adjustment=float(value.system_score_adjustment),
             admin_score_adjustment=float(value.admin_score_adjustment),
             created_at=_dt(value.created_at),
             updated_at=_dt(value.updated_at),
@@ -475,6 +487,10 @@ class SqliteContestRepository:
                     story_score=score.story_score,
                     couple_focus_score=score.couple_focus_score,
                     wedding_mood_score=score.wedding_mood_score,
+                    positive_comment_1=score.positive_comment_1,
+                    positive_comment_2=score.positive_comment_2,
+                    positive_comment_3=score.positive_comment_3,
+                    improvement_comment=score.improvement_comment,
                     summary=score.summary,
                     raw_payload=score.raw_payload,
                     judged_at=score.judged_at,
@@ -488,6 +504,10 @@ class SqliteContestRepository:
                 submission.score.story_score = score.story_score
                 submission.score.couple_focus_score = score.couple_focus_score
                 submission.score.wedding_mood_score = score.wedding_mood_score
+                submission.score.positive_comment_1 = score.positive_comment_1
+                submission.score.positive_comment_2 = score.positive_comment_2
+                submission.score.positive_comment_3 = score.positive_comment_3
+                submission.score.improvement_comment = score.improvement_comment
                 submission.score.summary = score.summary
                 submission.score.raw_payload = score.raw_payload
                 submission.score.judged_at = score.judged_at
@@ -546,6 +566,18 @@ class SqliteContestRepository:
             session.commit()
             return self._submission_record(submission)
 
+    def update_submission_system_adjustment(
+        self,
+        submission_id: str,
+        *,
+        system_score_adjustment: float,
+    ) -> SubmissionRecord:
+        with SessionLocal() as session:
+            submission = self._existing_submission_for_id(submission_id, session)
+            submission.system_score_adjustment = system_score_adjustment
+            session.commit()
+            return self._submission_record(submission)
+
 
 class FirestoreContestRepository:
     def __init__(self, settings: Settings) -> None:
@@ -586,7 +618,11 @@ class FirestoreContestRepository:
             story_score=float(data["story_score"]),
             couple_focus_score=float(data["couple_focus_score"]),
             wedding_mood_score=float(data["wedding_mood_score"]),
-            summary=data["summary"],
+            positive_comment_1=data.get("positive_comment_1", ""),
+            positive_comment_2=data.get("positive_comment_2", ""),
+            positive_comment_3=data.get("positive_comment_3", ""),
+            improvement_comment=data.get("improvement_comment", ""),
+            summary=data.get("summary", data.get("positive_comment_1", "")),
             raw_payload=data["raw_payload"],
             judged_at=_dt(data.get("judged_at")),
         )
@@ -608,6 +644,7 @@ class FirestoreContestRepository:
             judge_error=data.get("judge_error"),
             is_excluded=bool(data.get("is_excluded", False)),
             excluded_reason=data.get("excluded_reason"),
+            system_score_adjustment=float(data.get("system_score_adjustment", 0.0)),
             admin_score_adjustment=float(data.get("admin_score_adjustment", 0.0)),
             created_at=_dt(data.get("created_at")),
             updated_at=_dt(data.get("updated_at")),
@@ -862,6 +899,7 @@ class FirestoreContestRepository:
             "judge_error": None,
             "is_excluded": False,
             "excluded_reason": None,
+            "system_score_adjustment": 0.0,
             "admin_score_adjustment": 0.0,
             "updated_at": now,
             "score": None,
@@ -946,6 +984,25 @@ class FirestoreContestRepository:
         data = snapshot.to_dict()
         patch = {
             "admin_score_adjustment": admin_score_adjustment,
+            "updated_at": utcnow(),
+        }
+        doc.set(patch, merge=True)
+        data.update(patch)
+        return self._submission_record(submission_id, data)
+
+    def update_submission_system_adjustment(
+        self,
+        submission_id: str,
+        *,
+        system_score_adjustment: float,
+    ) -> SubmissionRecord:
+        doc = self.submissions.document(submission_id)
+        snapshot = doc.get()
+        if not snapshot.exists:
+            raise KeyError(submission_id)
+        data = snapshot.to_dict()
+        patch = {
+            "system_score_adjustment": system_score_adjustment,
             "updated_at": utcnow(),
         }
         doc.set(patch, merge=True)

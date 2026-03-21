@@ -20,7 +20,10 @@ class JudgeResult:
     story: float
     couple_focus: float
     wedding_mood: float
-    summary: str
+    positive_comment_1: str
+    positive_comment_2: str
+    positive_comment_3: str
+    improvement_comment: str
     raw_payload: str
 
     @property
@@ -34,21 +37,37 @@ class JudgeResult:
             1,
         )
 
+    @property
+    def summary(self) -> str:
+        return self.positive_comment_1
+
 
 def build_judging_prompt(guest_name: str, table_name: str | None) -> str:
     return (
         "You are judging a wedding reception photo contest. Score the photo in five categories from 0 to 20. "
         "Focus on how memorable the photo feels for a live wedding audience, but stay grounded in what is clearly visible. "
+        "Evaluate strictly using the full 0-20 scale. Consider 10-12 as the baseline for an average, 'decent' photo. Reserve scores of 18-20 only for truly exceptional shots."
         "The categories are composition, emotion, story, couple_focus, and wedding_mood. "
         "Prefer photos that make the bride and groom look joyful, natural, and central to the moment. "
         "Do not invent gifts, travel, relationships, or scenes that are not clearly shown in the image. "
         "If the bride, groom, or a wedding-related scene is not clearly visible, reflect that honestly in couple_focus and wedding_mood. "
         f"Photographer guest: {guest_name}. Table: {table_name or 'unknown'}. "
         'Return strict JSON with keys "composition", "emotion", "story", "couple_focus", "wedding_mood", '
-        'and "summary". Summary must be exactly two short Japanese sentences. '
-        "The tone should be mainly analytical and witty, as well as warm and natural,"
-        "The summary must match the score level and should not sound more positive than the score suggests. "
-        "Avoid directly mentioning scores. "
+        '"positive_comment_1", "positive_comment_2", "positive_comment_3", and "improvement_comment". '
+        "Each comment must be exactly one short Japanese sentence under 45 characters. "
+        "The three positive comments should each praise a different strength when possible. "
+        "The improvement comment should describe an honest weak point or missing element in a mild, constructive way. "
+        "Strongly adopt the persona of a VERY WITTY, friendly, veteran professional wedding photographer with a DRY, OBSERVANT SENSE OF HUMOR. "
+        "Use playful observations, clever analogies, and an engaging but relaxed conversational tone to make the guests chuckle. "
+        "Do NOT overuse exclamation marks (!). Keep the tone calm and witty rather than overly excited. End most sentences with a simple period. "
+        "All comments must match the score level and must not sound more positive than the score suggests. "
+        "Avoid directly mentioning scores. Keep the wording modest, believable, and grounded in what is actually visible."
+
+        "Example of Expected Tone in Japanese (Warm, Witty, Calm, under 45 chars): "
+        'positive_comment: "お二人の笑顔が眩しすぎて、式場の照明スタッフが嫉妬しそうな一枚です。"'
+        'positive_comment: "この見事な構図を計算して撮ったなら、明日からプロを名乗れます。"'
+        'positive_comment: "画面の隅っこで涙ぐむご友人、完全に主役を食うほどの良い表情です。"'
+        'improvement_comment: "お二人への愛があふれすぎて、手が少し震えてしまったようです。"'
     )
 
 
@@ -61,7 +80,10 @@ def parse_result_payload(payload: dict, provider: str, model_name: str) -> Judge
         story=clamp_score(float(payload["story"])),
         couple_focus=clamp_score(float(payload["couple_focus"])),
         wedding_mood=clamp_score(float(payload["wedding_mood"])),
-        summary=str(payload["summary"]).strip(),
+        positive_comment_1=str(payload["positive_comment_1"]).strip(),
+        positive_comment_2=str(payload["positive_comment_2"]).strip(),
+        positive_comment_3=str(payload["positive_comment_3"]).strip(),
+        improvement_comment=str(payload["improvement_comment"]).strip(),
         raw_payload=json.dumps(payload, ensure_ascii=False, indent=2),
     )
 
@@ -120,7 +142,10 @@ class MockJudgeProvider(BaseJudgeProvider):
             key=lambda item: item[1],
             reverse=True,
         )
-        summary = f"{top_axes[0][0]}が特に映えていて、披露宴らしい一枚です。"
+        positive_comment_1 = f"{top_axes[0][0]}の見せ方が安定しています。"
+        positive_comment_2 = f"{top_axes[1][0]}が自然に伝わる一枚です。"
+        positive_comment_3 = f"{top_axes[2][0]}にも印象が残ります。"
+        improvement_comment = f"{top_axes[-1][0]}はもう一歩伸びしろがあります。"
 
         payload = {
             "composition": composition,
@@ -128,7 +153,10 @@ class MockJudgeProvider(BaseJudgeProvider):
             "story": story,
             "couple_focus": couple_focus,
             "wedding_mood": wedding_mood,
-            "summary": summary,
+            "positive_comment_1": positive_comment_1,
+            "positive_comment_2": positive_comment_2,
+            "positive_comment_3": positive_comment_3,
+            "improvement_comment": improvement_comment,
             "provider_note": "Scored locally with deterministic image heuristics.",
             "mime_type": mime_type,
         }

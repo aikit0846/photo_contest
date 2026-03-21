@@ -44,6 +44,30 @@ def init_db() -> None:
                 connection.exec_driver_sql(
                     "ALTER TABLE events ADD COLUMN feedback_released BOOLEAN DEFAULT 0 NOT NULL",
                 )
+            submission_columns = connection.exec_driver_sql("PRAGMA table_info(submissions)").fetchall()
+            submission_column_names = {column[1] for column in submission_columns}
+            if "system_score_adjustment" not in submission_column_names:
+                connection.exec_driver_sql(
+                    "ALTER TABLE submissions ADD COLUMN system_score_adjustment FLOAT DEFAULT 0.0 NOT NULL",
+                )
+            score_columns = connection.exec_driver_sql("PRAGMA table_info(scores)").fetchall()
+            score_column_names = {column[1] for column in score_columns}
+            if "positive_comment_1" not in score_column_names:
+                connection.exec_driver_sql(
+                    "ALTER TABLE scores ADD COLUMN positive_comment_1 TEXT DEFAULT '' NOT NULL",
+                )
+            if "positive_comment_2" not in score_column_names:
+                connection.exec_driver_sql(
+                    "ALTER TABLE scores ADD COLUMN positive_comment_2 TEXT DEFAULT '' NOT NULL",
+                )
+            if "positive_comment_3" not in score_column_names:
+                connection.exec_driver_sql(
+                    "ALTER TABLE scores ADD COLUMN positive_comment_3 TEXT DEFAULT '' NOT NULL",
+                )
+            if "improvement_comment" not in score_column_names:
+                connection.exec_driver_sql(
+                    "ALTER TABLE scores ADD COLUMN improvement_comment TEXT DEFAULT '' NOT NULL",
+                )
 
 
 def get_db() -> Generator[Session, None, None]:

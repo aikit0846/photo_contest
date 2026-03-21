@@ -18,7 +18,19 @@
       {% endif %}
       {% if feedback_ready %}
       <p class="guest-feedback-score">{{ feedback_score }} 点</p>
-      <p class="guest-feedback-comment">{{ guest.submission.score.summary }}</p>
+      <dl class="guest-feedback-breakdown">
+        {% for label, value in feedback_breakdown %}
+        <div>
+          <dt>{{ label }}</dt>
+          <dd>{{ value }} 点</dd>
+        </div>
+        {% endfor %}
+      </dl>
+      <div class="guest-feedback-comments">
+        {% for line in feedback_lines %}
+        <p class="guest-feedback-comment">{{ line }}</p>
+        {% endfor %}
+      </div>
       {% else %}
       <p class="guest-feedback-note">結果を準備中です。少し時間をおいてからもう一度開いてください。</p>
       {% endif %}

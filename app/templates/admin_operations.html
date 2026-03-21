@@ -78,7 +78,7 @@
           <span>#{{ loop.index }}</span>
           <strong class="person-name">{{ entry.guest.label }}</strong>
           <span>{{ effective_score(entry) }} 点</span>
-          <span>{{ entry.score.summary }}</span>
+          <span>{{ podium_comment(entry, loop.index) }}</span>
         </li>
         {% endfor %}
       </ol>
@@ -105,9 +105,9 @@
 
   <section class="panel">
     <p class="kicker">Submissions</p>
-    <h2>投稿一覧</h2>
+    <h2>ランキング対象の投稿</h2>
     <div class="submission-list submission-grid">
-      {% for submission in submissions %}
+      {% for submission in ranking_submissions %}
       {% set guest_is_eligible = submission.guest and submission.guest.eligible %}
       {% set ranking_target = guest_is_eligible and not submission.is_excluded %}
       <article class="submission-card">
@@ -137,7 +137,7 @@
           </p>
           {% endif %}
           {% if submission.score %}
-          <p><strong>{{ effective_score(submission) }} 点</strong> / {{ submission.score.summary }}</p>
+          <p><strong>{{ effective_score(submission) }} 点</strong> / {{ short_comment(submission) }}</p>
           {% endif %}
           {% if submission.judge_error %}
           <p class="error-text">Error: {{ submission.judge_error }}</p>
@@ -166,7 +166,65 @@
         </div>
       </article>
       {% else %}
-      <p>まだ投稿がありません。</p>
+      <p>ランキング対象の投稿はまだありません。</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <p class="kicker">Submissions</p>
+    <h2>ランキング対象外の投稿</h2>
+    <div class="submission-list submission-grid">
+      {% for submission in non_ranking_submissions %}
+      {% set guest_is_eligible = submission.guest and submission.guest.eligible %}
+      {% set ranking_target = guest_is_eligible and not submission.is_excluded %}
+      <article class="submission-card">
+        <img src="{{ submission.image_url }}" alt="{{ submission.guest.label }}" />
+        <div class="submission-card-body">
+          <div class="submission-head">
+            <div>
+              <h3 class="person-name">{{ submission.guest.label }}</h3>
+              <p>{{ "新郎側" if submission.guest.side == "groom" else "新婦側" }} / {{ submission.guest.group_type }}</p>
+            </div>
+            <div class="submission-statuses">
+              <span class="status-pill {% if submission.is_excluded %}closed{% else %}open{% endif %}">
+                {% if submission.is_excluded %}除外{% else %}{{ submission.judging_state }}{% endif %}
+              </span>
+            </div>
+          </div>
+          <p class="submission-ranking-note">
+            {% if not guest_is_eligible %}
+            このゲストはゲスト管理でランキング対象外に設定されています。
+            {% elif submission.is_excluded %}
+            この投稿は個別にランキング対象外へ設定されています{% if submission.excluded_reason %}。理由: {{ submission.excluded_reason }}{% endif %}。
+            {% endif %}
+          </p>
+          {% if submission.score %}
+          <p><strong>{{ effective_score(submission) }} 点</strong> / {{ short_comment(submission) }}</p>
+          {% endif %}
+          {% if submission.judge_error %}
+          <p class="error-text">Error: {{ submission.judge_error }}</p>
+          {% endif %}
+          <form class="compact-grid compact-grid-two" action="/admin/submissions/{{ submission.id }}/adjust" method="post">
+            <label>
+              点数補正
+              <input type="number" step="0.1" name="admin_score_adjustment" value="{{ submission.admin_score_adjustment }}" />
+            </label>
+            <button class="button button-secondary" type="submit">保存</button>
+          </form>
+          {% if submission.is_excluded %}
+          <form action="/admin/submissions/{{ submission.id }}/restore" method="post">
+            <button class="button button-ghost" type="submit">
+              {% if guest_is_eligible %}ランキングに戻す{% else %}投稿個別の除外を解除{% endif %}
+            </button>
+          </form>
+          {% else %}
+          <p class="helper-text">対象に戻すにはゲスト管理で設定を切り替えてください。</p>
+          {% endif %}
+        </div>
+      </article>
+      {% else %}
+      <p>ランキング対象外の投稿はまだありません。</p>
       {% endfor %}
     </div>
   </section>

@@ -25,7 +25,7 @@
         <div class="entry-card-body">
           <p class="rank-chip">暫定 {{ loop.index }} 位</p>
           <h3 class="person-name">{{ entry.guest.label }}</h3>
-          <p>{{ entry.score.summary }}</p>
+          <p>{{ short_comment(entry) }}</p>
         </div>
       </article>
       {% endfor %}

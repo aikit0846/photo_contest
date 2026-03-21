@@ -68,7 +68,7 @@
                 data-rank="{{ rank }}"
                 data-name="{{ winner.guest.label }}"
                 data-score="{{ effective_score(winner) }} pts"
-                data-comment="{{ winner.score.summary }}"
+                data-comment="{{ podium_comment(winner, rank) }}"
                 data-image="{{ winner.image_url }}"
                 data-state="hidden"
               >
@@ -80,7 +80,7 @@
                     <h2 class="person-name">{{ winner.guest.label }}</h2>
                     <p class="podium-score">{{ effective_score(winner) }} pts</p>
                   </div>
-                  <p class="podium-comment">{{ winner.score.summary }}</p>
+                  <p class="podium-comment">{{ podium_comment(winner, rank) }}</p>
                 </div>
               </div>
               <div class="podium-stand podium-stand-{{ rank }}">

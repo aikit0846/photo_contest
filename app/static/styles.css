@@ -483,6 +483,40 @@ button {
   font-weight: 900;
 }
 
+.guest-feedback-breakdown {
+  margin: 0 0 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.guest-feedback-breakdown div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.guest-feedback-breakdown dt,
+.guest-feedback-breakdown dd {
+  margin: 0;
+}
+
+.guest-feedback-breakdown dt {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.guest-feedback-breakdown dd {
+  font-weight: 800;
+}
+
+.guest-feedback-comments {
+  display: grid;
+  gap: 10px;
+}
+
 .guest-feedback-comment {
   margin: 0;
   font-size: 1.06rem;
