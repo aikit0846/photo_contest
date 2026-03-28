@@ -111,12 +111,37 @@ def dataset_marker(tag: str) -> str:
     return f"{TAG_PREFIX}{tag}"
 
 
+def is_load_test_guest(guest) -> bool:
+    return bool(guest is not None and guest.notes and TAG_PREFIX in guest.notes)
+
+
 def tagged_guests(repository, tag: str) -> list:
     marker = dataset_marker(tag)
     return [guest for guest in repository.list_guests() if guest.notes and marker in guest.notes]
 
 
+def non_test_submissions(repository) -> list:
+    guests = {guest.id: guest for guest in repository.list_guests()}
+    submissions = repository.list_submissions()
+    return [
+        submission
+        for submission in submissions
+        if not is_load_test_guest(guests.get(submission.guest_id) or submission.guest)
+    ]
+
+
 def seed_dataset(runtime: Runtime, *, tag: str, count: int, source_dir: Path | None, seed: int) -> None:
+    foreign_submissions = non_test_submissions(runtime.repository)
+    if foreign_submissions:
+        examples = ", ".join(
+            f"{submission.guest_name_snapshot}({submission.id})"
+            for submission in foreign_submissions[:5]
+        )
+        raise SystemExit(
+            "Non-test submissions already exist. "
+            "Load-test seeding is blocked to avoid mixing rehearsal data with real submissions. "
+            f"Found {len(foreign_submissions)} non-test submission(s): {examples}",
+        )
     existing = tagged_guests(runtime.repository, tag)
     if existing:
         raise SystemExit(
