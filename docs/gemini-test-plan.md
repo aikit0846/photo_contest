@@ -102,6 +102,25 @@ gcloud config set run/region "$REGION"
 export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
 ```
 
+もし `gcloud run services describe ...` で認証エラーが出るときは、先に local 認証を更新する。
+
+```bash
+gcloud auth login
+gcloud auth application-default login
+gcloud auth application-default set-quota-project "$PROJECT_ID"
+gcloud config set project "$PROJECT_ID"
+gcloud config set run/region "$REGION"
+```
+
+補足:
+
+- `gcloud auth login`
+  - `gcloud` CLI 自体の認証
+- `gcloud auth application-default login`
+  - local の Python スクリプトが Firestore / GCS を触るための認証
+- `gcloud auth application-default set-quota-project "$PROJECT_ID"`
+  - quota project mismatch 警告を解消するための設定
+
 1. 本番相当 backend を向いていることを確認する。
 
 ```bash
