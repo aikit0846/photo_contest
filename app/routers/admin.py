@@ -6,6 +6,7 @@ from fastapi import Form
 from fastapi import HTTPException
 from fastapi import Request
 from fastapi.responses import HTMLResponse
+from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -19,8 +20,10 @@ from app.services.contest import create_guest
 from app.services.contest import effective_score
 from app.services.contest import event_stats
 from app.services.contest import get_event
+from app.services.contest import judge_submission_batch
 from app.services.contest import judge_submissions
 from app.services.contest import leaderboard
+from app.services.contest import plan_judging_run
 from app.services.contest import podium_comment
 from app.services.contest import refresh_balanced_scores
 from app.services.contest import provider_choices
@@ -279,6 +282,51 @@ def run_judging(
     return RedirectResponse(
         f"/admin?message={judged}件を採点しました。({provider_name})",
         status_code=303,
+    )
+
+
+@router.post("/submissions/judge/plan")
+async def plan_judging(
+    request: Request,
+    repository: ContestRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> JSONResponse:
+    payload = await request.json()
+    event = get_event(repository, settings)
+    plan = plan_judging_run(
+        repository,
+        event=event,
+        settings=settings,
+        force=bool(payload.get("force")),
+    )
+    return JSONResponse(plan)
+
+
+@router.post("/submissions/judge/batch")
+async def run_judging_batch(
+    request: Request,
+    repository: ContestRepository = Depends(get_repository),
+    storage: BaseImageStorage = Depends(get_storage),
+    settings: Settings = Depends(get_settings),
+) -> JSONResponse:
+    payload = await request.json()
+    submission_ids = [str(item) for item in payload.get("submission_ids", []) if str(item).strip()]
+    event = get_event(repository, settings)
+    judged, errors, provider_name, processed = judge_submission_batch(
+        repository,
+        storage,
+        event=event,
+        settings=settings,
+        submission_ids=submission_ids,
+    )
+    return JSONResponse(
+        {
+            "processed": processed,
+            "judged": judged,
+            "error_count": len(errors),
+            "errors": errors,
+            "provider_name": provider_name,
+        },
     )
 
 

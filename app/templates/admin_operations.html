@@ -30,13 +30,14 @@
           {% if event.submissions_open %}投稿を締め切る{% else %}投稿を再開する{% endif %}
         </button>
       </form>
-      <form class="stack compact" action="/admin/submissions/judge" method="post">
+      <form id="judging-form" class="stack compact" action="/admin/submissions/judge" method="post">
         <label class="inline-check">
           <input type="checkbox" name="force" />
           すでに採点済みの投稿も再採点する
         </label>
         <button class="button button-secondary" type="submit">AI 採点を実行</button>
       </form>
+      <p id="judging-status" class="helper-text" hidden></p>
     </article>
 
     <article class="panel">
@@ -229,4 +230,121 @@
     </div>
   </section>
 </main>
+<script>
+  (() => {
+    const form = document.getElementById("judging-form");
+    const status = document.getElementById("judging-status");
+    if (!form || !status || !window.fetch) {
+      return;
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    const forceInput = form.querySelector('input[name="force"]');
+    let running = false;
+
+    function setRunningState(active) {
+      running = active;
+      submitButton.disabled = active;
+      if (forceInput) {
+        forceInput.disabled = active;
+      }
+    }
+
+    async function postJson(url, payload) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    }
+
+    function delay(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (running) {
+        return;
+      }
+
+      setRunningState(true);
+      status.hidden = false;
+      status.textContent = "採点対象を確認しています。このページは閉じずに開いたままにしてください。";
+
+      try {
+        const plan = await postJson("/admin/submissions/judge/plan", {
+          force: Boolean(forceInput && forceInput.checked),
+        });
+        const providerName = plan.provider_name || "unknown";
+        const queue = Array.isArray(plan.submission_ids) ? [...plan.submission_ids] : [];
+        const batchSize = Math.max(1, Number(plan.batch_size || 1));
+        const total = Number(plan.total || queue.length);
+
+        if (total === 0) {
+          window.location.href = `/admin?message=${encodeURIComponent(`採点対象はありませんでした。(${providerName})`)}`;
+          return;
+        }
+
+        let processed = 0;
+        let judged = 0;
+        let errorCount = 0;
+
+        while (queue.length > 0) {
+          const current = queue.slice(0, batchSize);
+          status.textContent = `採点中... ${processed}/${total} 件 (${providerName})`;
+          let result = null;
+          let lastError = null;
+
+          for (let attempt = 0; attempt < 3; attempt += 1) {
+            try {
+              result = await postJson("/admin/submissions/judge/batch", {
+                submission_ids: current,
+              });
+              lastError = null;
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt === 2) {
+                break;
+              }
+              const waitSeconds = attempt === 0 ? 10 : 20;
+              status.textContent =
+                `通信が不安定です。${waitSeconds}秒待って同じバッチを再試行します... ${processed}/${total} 件 (${providerName})`;
+              await delay(waitSeconds * 1000);
+            }
+          }
+
+          if (!result) {
+            throw lastError || new Error("Batch request failed");
+          }
+
+          queue.splice(0, current.length);
+          processed += Number(result.processed || current.length);
+          judged += Number(result.judged || 0);
+          errorCount += Number(result.error_count || 0);
+          status.textContent = `採点中... ${processed}/${total} 件 (${providerName})`;
+        }
+
+        if (errorCount > 0) {
+          window.location.href =
+            `/admin?error=${encodeURIComponent(`${judged}件を採点し、${errorCount}件でエラーがありました。(${providerName})`)}`;
+          return;
+        }
+        window.location.href = `/admin?message=${encodeURIComponent(`${judged}件を採点しました。(${providerName})`)}`;
+      } catch (error) {
+        setRunningState(false);
+        status.textContent =
+          "採点の分割実行に失敗しました。`force` を付けずにもう一度実行すると、未採点と failed から再開できます。";
+      }
+    });
+  })();
+</script>
 {% endblock %}

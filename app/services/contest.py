@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import mimetypes
+import time
 from pathlib import Path
 from urllib.parse import quote_plus
 
+import httpx
 from fastapi import HTTPException
 from fastapi import UploadFile
 
@@ -26,6 +28,11 @@ ENTRY_CATEGORY_OPTIONS = [
     {"key": "groom-family", "label": "新郎親族"},
     {"key": "bride-family", "label": "新婦親族"},
 ]
+
+GEMINI_FREE_TIER_MIN_INTERVAL_SECONDS = 6.5
+GEMINI_BATCH_SIZE = 3
+DEFAULT_BATCH_SIZE = 20
+GEMINI_RETRY_BACKOFF_SECONDS = (10.0, 20.0)
 
 
 def common_entry_url(settings: Settings) -> str:
@@ -167,22 +174,84 @@ def judge_submissions(
     settings: Settings,
     force: bool = False,
 ) -> tuple[int, list[str], str]:
+    plan = plan_judging_run(repository, event=event, settings=settings, force=force)
+    judged, errors, provider_name, _processed = judge_submission_batch(
+        repository,
+        storage,
+        event=event,
+        settings=settings,
+        submission_ids=plan["submission_ids"],
+    )
+    return judged, errors, provider_name
+
+
+def plan_judging_run(
+    repository: ContestRepository,
+    *,
+    event: EventRecord,
+    settings: Settings,
+    force: bool = False,
+) -> dict[str, object]:
     provider = build_provider(settings, event.provider_preference, event.model_hint)
-    submissions = repository.list_submissions()
+    submission_ids = [submission.id for submission in _judging_targets(repository, force=force)]
+    return {
+        "submission_ids": submission_ids,
+        "total": len(submission_ids),
+        "provider_name": provider.display_name,
+        "batch_size": GEMINI_BATCH_SIZE if provider.provider_name == "gemini" else DEFAULT_BATCH_SIZE,
+        "min_interval_seconds": (
+            GEMINI_FREE_TIER_MIN_INTERVAL_SECONDS if provider.provider_name == "gemini" else 0.0
+        ),
+    }
+
+
+def judge_submission_batch(
+    repository: ContestRepository,
+    storage: BaseImageStorage,
+    *,
+    event: EventRecord,
+    settings: Settings,
+    submission_ids: list[str],
+) -> tuple[int, list[str], str, int]:
+    provider = build_provider(settings, event.provider_preference, event.model_hint)
+    submission_id_set = set(submission_ids)
+    submission_map = {
+        submission.id: submission
+        for submission in repository.list_submissions()
+        if submission.id in submission_id_set
+    }
     guests = {guest.id: guest for guest in repository.list_guests()}
 
     judged = 0
+    processed = 0
     errors: list[str] = []
-    for submission in submissions:
-        guest = guests.get(submission.guest_id)
+    last_started_at: float | None = None
+    min_interval_seconds = (
+        GEMINI_FREE_TIER_MIN_INTERVAL_SECONDS if provider.provider_name == "gemini" else 0.0
+    )
+
+    for submission_id in submission_ids:
+        submission = submission_map.get(submission_id)
+        if submission is None:
+            errors.append(f"{submission_id}: submission not found")
+            processed += 1
+            continue
+        guest = guests.get(submission.guest_id) or submission.guest
         if guest is None:
+            errors.append(f"{submission_id}: guest not found")
+            processed += 1
             continue
-        if not force and submission.judging_state == "judged" and submission.score is not None:
-            continue
+
+        if min_interval_seconds and last_started_at is not None:
+            elapsed = time.monotonic() - last_started_at
+            if elapsed < min_interval_seconds:
+                time.sleep(min_interval_seconds - elapsed)
+        last_started_at = time.monotonic()
 
         try:
             image_bytes = storage.read_image(submission.storage_key)
-            result = provider.judge(
+            result = _judge_with_retries(
+                provider,
                 image_bytes=image_bytes,
                 mime_type=submission.mime_type,
                 guest_name=guest.label,
@@ -214,9 +283,63 @@ def judge_submissions(
         except Exception as exc:  # noqa: BLE001
             repository.mark_submission_failed(submission.id, str(exc))
             errors.append(f"{guest.label}: {exc}")
+        processed += 1
 
     refresh_balanced_scores(repository)
-    return judged, errors, provider.display_name
+    return judged, errors, provider.display_name, processed
+
+
+def _judge_with_retries(
+    provider,
+    *,
+    image_bytes: bytes,
+    mime_type: str,
+    guest_name: str,
+    table_name: str | None,
+):
+    backoffs = GEMINI_RETRY_BACKOFF_SECONDS if provider.provider_name == "gemini" else ()
+    attempt = 0
+    while True:
+        try:
+            return provider.judge(
+                image_bytes=image_bytes,
+                mime_type=mime_type,
+                guest_name=guest_name,
+                table_name=table_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            if attempt >= len(backoffs) or not _is_retryable_judging_error(exc):
+                raise
+            time.sleep(backoffs[attempt])
+            attempt += 1
+
+
+def _is_retryable_judging_error(exc: Exception) -> bool:
+    if isinstance(exc, httpx.TimeoutException):
+        return True
+    if isinstance(exc, httpx.TransportError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in {408, 409, 429, 500, 502, 503, 504}
+    return False
+
+
+def _judging_targets(
+    repository: ContestRepository,
+    *,
+    force: bool,
+) -> list[SubmissionRecord]:
+    submissions = repository.list_submissions()
+    guests = {guest.id: guest for guest in repository.list_guests()}
+    targets: list[SubmissionRecord] = []
+    for submission in submissions:
+        guest = guests.get(submission.guest_id) or submission.guest
+        if guest is None:
+            continue
+        if not force and submission.judging_state == "judged" and submission.score is not None:
+            continue
+        targets.append(submission)
+    return targets
 
 
 def effective_score(submission: SubmissionRecord) -> float:

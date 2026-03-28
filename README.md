@@ -59,6 +59,22 @@ Cloud Run には `requirements.txt` も置いてあり、buildpacks 側で安定
 uv run python scripts/seed_demo.py
 ```
 
+## 負荷テスト用データ投入
+
+70 人規模の当日テストを手作業で再現したくないときは、タグ付きのテストゲストと投稿を一括生成できます。
+
+```bash
+uv run python scripts/load_test_dataset.py seed --tag rehearsal-70 --count 70
+uv run python scripts/load_test_dataset.py status --tag rehearsal-70
+uv run python scripts/load_test_dataset.py cleanup --tag rehearsal-70 --yes
+```
+
+Gemini のコメント挙動もなるべく現実に寄せたいときは、実写真を入れたフォルダを使えます。
+
+```bash
+uv run python scripts/load_test_dataset.py seed --tag rehearsal-real --count 70 --source-dir ./tmp/test-photos
+```
+
 ## 環境変数
 
 - `APP_URL`: QR コードに埋め込む URL のベース
@@ -89,5 +105,6 @@ uv run python scripts/seed_demo.py
 - Cloud Run の source deploy 前提で `Procfile` を追加済みです
 - Cloud Run 用の詳細手順は [docs/cloud-run.md](/Users/taikisuzuki/wedding/photo_contest/docs/cloud-run.md)
 - 本番前の確認事項と救済フローは [docs/runbook.md](/Users/taikisuzuki/wedding/photo_contest/docs/runbook.md)
+- Gemini free tier の日別テスト計画は [docs/gemini-test-plan.md](/Users/taikisuzuki/wedding/photo_contest/docs/gemini-test-plan.md)
 - 現在の残タスク管理は [docs/remaining-tasks.md](/Users/taikisuzuki/wedding/photo_contest/docs/remaining-tasks.md)
 - 今日はここで止めるときの扱いは [docs/cloud-run.md](/Users/taikisuzuki/wedding/photo_contest/docs/cloud-run.md) の「作業を止めるとき」を参照
