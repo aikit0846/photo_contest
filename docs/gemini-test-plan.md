@@ -97,7 +97,9 @@ export STORAGE_BACKEND=gcs
 export FIRESTORE_PROJECT="$PROJECT_ID"
 export FIRESTORE_DATABASE='(default)'
 export GCS_BUCKET=wedding-photo-contest-20260419-assets
-export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format='value(status.url)')"
+gcloud config set project "$PROJECT_ID"
+gcloud config set run/region "$REGION"
+export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
 ```
 
 1. 本番相当 backend を向いていることを確認する。
@@ -123,6 +125,7 @@ echo "$APP_URL"
 
 ```bash
 gcloud run services describe wedding-photo-contest \
+  --project wedding-photo-contest-20260419 \
   --region asia-northeast1 \
   --format='value(status.url)'
 ```
