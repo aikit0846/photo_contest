@@ -311,6 +311,11 @@ uv run python scripts/load_test_dataset.py status --tag 2026-03-31-mock70
 
 ### 2026-04-05: 70 件 Gemini full run 1 回目
 
+ステータス:
+
+- 完了
+- `2026-04-05` 枠の rehearsal は前倒しで実施済み
+
 目的:
 
 - 70 件規模の Gemini 採点が完走するかを確認する
@@ -388,7 +393,18 @@ uv run python scripts/load_test_dataset.py status --tag 2026-04-05-gemini70-a
 
 - `70`
 
+実施結果:
+
+- デプロイ済み Cloud Run で `70` 件の Gemini 採点が完走した
+- 今回は無事動作した
+- 所要時間はおよそ `16〜17分`
+- 現時点では本番許容の `15〜20分` に収まっている
+
 ### 2026-04-10: 実写真ベースの品質テスト
+
+ステータス:
+
+- 完了
 
 目的:
 
@@ -457,6 +473,12 @@ uv run python scripts/load_test_dataset.py status --tag 2026-04-10-real20
 使用する Gemini request の目安:
 
 - `20`
+
+実施結果:
+
+- 点数の品質はよい感じ
+- コメントの品質もよい感じ
+- 採点処理は問題なく動作した
 
 ### 2026-04-12: 70 件 Gemini recovery test
 
@@ -683,6 +705,12 @@ $APP_URL/admin
 - `2026-04-10` の品質テストは縮小してよい
 - 優先順位は品質より完走性
 - 先に原因を切り分ける
+
+補足:
+
+- この項目は今回クリア済み
+- `2026-04-10` の品質確認も今回クリア済み
+- 次の重点は `2026-04-12` の recovery test と `2026-04-17` の smoke test
 
 ### 2026-04-12 の recovery test が安定しなかった場合
 
