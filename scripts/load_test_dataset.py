@@ -104,7 +104,36 @@ def init_runtime() -> Runtime:
         init_db()
     repository = get_repository()
     get_event(repository, settings)
-    return Runtime(repository=repository, storage=storage)
+    runtime = Runtime(repository=repository, storage=storage)
+    preflight_runtime(runtime)
+    return runtime
+
+
+def preflight_runtime(runtime: Runtime) -> None:
+    print("Preflight: checking backend connectivity...", flush=True)
+
+    if hasattr(runtime.repository, "events"):
+        try:
+            runtime.repository.events.document("primary").get(timeout=10)
+            print("Preflight: Firestore reachable.", flush=True)
+        except Exception as exc:  # noqa: BLE001
+            raise SystemExit(
+                "Firestore preflight failed. "
+                "Run `gcloud auth application-default login` and "
+                "`gcloud auth application-default set-quota-project \"$PROJECT_ID\"`, then retry. "
+                f"Details: {exc}",
+            ) from exc
+
+    if hasattr(runtime.storage, "bucket"):
+        try:
+            runtime.storage.bucket.reload(timeout=10)
+            print("Preflight: GCS bucket reachable.", flush=True)
+        except Exception as exc:  # noqa: BLE001
+            raise SystemExit(
+                "GCS preflight failed. "
+                "Check ADC auth and bucket access, then retry. "
+                f"Details: {exc}",
+            ) from exc
 
 
 def dataset_marker(tag: str) -> str:
