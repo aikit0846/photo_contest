@@ -12,6 +12,7 @@ from app.repositories import ContestRepository
 from app.repositories import get_repository
 from app.services.contest import get_event
 from app.services.contest import judge_single_submission
+from app.services.contest import refresh_balanced_scores
 from app.services.judging_jobs import verify_task_token
 from app.storage import BaseImageStorage
 from app.storage import get_storage
@@ -51,6 +52,7 @@ async def process_judging_task(
         submission_id=submission_id,
         event=event,
         settings=settings,
+        refresh_balancing=False,
     )
     updated = repository.advance_judging_job(
         job_id,
@@ -58,6 +60,8 @@ async def process_judging_task(
         success=success,
         error=error,
     )
+    if updated.state == "completed":
+        refresh_balanced_scores(repository)
     return JSONResponse(
         {
             "status": "ok",

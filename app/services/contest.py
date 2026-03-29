@@ -272,6 +272,7 @@ def judge_single_submission(
     submission_id: str,
     event: EventRecord,
     settings: Settings,
+    refresh_balancing: bool = True,
 ) -> tuple[bool, str, str | None]:
     provider = build_provider(settings, event.provider_preference, event.model_hint)
     submission = repository.get_submission(submission_id)
@@ -287,7 +288,8 @@ def judge_single_submission(
         submission=submission,
         guest=guest,
     )
-    refresh_balanced_scores(repository)
+    if refresh_balancing:
+        refresh_balanced_scores(repository)
     return success, provider.display_name, error
 
 
