@@ -248,45 +248,92 @@ def judge_submission_batch(
                 time.sleep(min_interval_seconds - elapsed)
         last_started_at = time.monotonic()
 
-        try:
-            image_bytes = storage.read_image(submission.storage_key)
-            result = _judge_with_retries(
-                provider,
-                image_bytes=image_bytes,
-                mime_type=submission.mime_type,
-                guest_name=guest.label,
-                table_name=guest.table_name,
-            )
-            repository.mark_submission_judged(
-                submission.id,
-                ScoreRecord(
-                    id=f"score-{submission.id}",
-                    submission_id=submission.id,
-                    provider=result.provider,
-                    model_name=result.model_name,
-                    total_score=result.total_score,
-                    composition_score=result.composition,
-                    emotion_score=result.emotion,
-                    story_score=result.story,
-                    couple_focus_score=result.couple_focus,
-                    wedding_mood_score=result.wedding_mood,
-                    positive_comment_1=result.positive_comment_1,
-                    positive_comment_2=result.positive_comment_2,
-                    positive_comment_3=result.positive_comment_3,
-                    improvement_comment=result.improvement_comment,
-                    summary=result.summary,
-                    raw_payload=result.raw_payload,
-                    judged_at=utcnow(),
-                ),
-            )
+        success, error = _judge_submission_with_provider(
+            repository,
+            storage,
+            provider=provider,
+            submission=submission,
+            guest=guest,
+        )
+        if success:
             judged += 1
-        except Exception as exc:  # noqa: BLE001
-            repository.mark_submission_failed(submission.id, str(exc))
-            errors.append(f"{guest.label}: {exc}")
+        elif error is not None:
+            errors.append(f"{guest.label}: {error}")
         processed += 1
 
     refresh_balanced_scores(repository)
     return judged, errors, provider.display_name, processed
+
+
+def judge_single_submission(
+    repository: ContestRepository,
+    storage: BaseImageStorage,
+    *,
+    submission_id: str,
+    event: EventRecord,
+    settings: Settings,
+) -> tuple[bool, str, str | None]:
+    provider = build_provider(settings, event.provider_preference, event.model_hint)
+    submission = repository.get_submission(submission_id)
+    if submission is None:
+        return False, provider.display_name, "submission not found"
+    guest = submission.guest or repository.get_guest_by_id(submission.guest_id)
+    if guest is None:
+        return False, provider.display_name, "guest not found"
+    success, error = _judge_submission_with_provider(
+        repository,
+        storage,
+        provider=provider,
+        submission=submission,
+        guest=guest,
+    )
+    refresh_balanced_scores(repository)
+    return success, provider.display_name, error
+
+
+def _judge_submission_with_provider(
+    repository: ContestRepository,
+    storage: BaseImageStorage,
+    *,
+    provider,
+    submission: SubmissionRecord,
+    guest: GuestRecord,
+) -> tuple[bool, str | None]:
+    try:
+        image_bytes = storage.read_image(submission.storage_key)
+        result = _judge_with_retries(
+            provider,
+            image_bytes=image_bytes,
+            mime_type=submission.mime_type,
+            guest_name=guest.label,
+            table_name=guest.table_name,
+        )
+        repository.mark_submission_judged(
+            submission.id,
+            ScoreRecord(
+                id=f"score-{submission.id}",
+                submission_id=submission.id,
+                provider=result.provider,
+                model_name=result.model_name,
+                total_score=result.total_score,
+                composition_score=result.composition,
+                emotion_score=result.emotion,
+                story_score=result.story,
+                couple_focus_score=result.couple_focus,
+                wedding_mood_score=result.wedding_mood,
+                positive_comment_1=result.positive_comment_1,
+                positive_comment_2=result.positive_comment_2,
+                positive_comment_3=result.positive_comment_3,
+                improvement_comment=result.improvement_comment,
+                summary=result.summary,
+                raw_payload=result.raw_payload,
+                judged_at=utcnow(),
+            ),
+        )
+        return True, None
+    except Exception as exc:  # noqa: BLE001
+        repository.mark_submission_failed(submission.id, str(exc))
+        return False, str(exc)
 
 
 def _judge_with_retries(

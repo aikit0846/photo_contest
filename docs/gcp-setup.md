@@ -85,6 +85,7 @@ gcloud config set run/region asia-northeast1
 ```bash
 gcloud services enable \
   run.googleapis.com \
+  cloudtasks.googleapis.com \
   cloudbuild.googleapis.com \
   artifactregistry.googleapis.com \
   secretmanager.googleapis.com \
@@ -163,6 +164,10 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 gcloud storage buckets add-iam-policy-binding gs://BUCKET_NAME \
   --member="serviceAccount:photo-contest-run@PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/storage.objectAdmin"
+
+gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member="serviceAccount:photo-contest-run@PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/cloudtasks.enqueuer"
 ```
 
 ## 11. Cloud Build service account に builder 権限を付ける
@@ -187,12 +192,14 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 - `ADMIN_PASSWORD`
 - `GOOGLE_API_KEY`
+- `CLOUD_TASKS_TOKEN`
 
 作成例:
 
 ```bash
 printf 'YOUR_ADMIN_PASSWORD' | gcloud secrets create ADMIN_PASSWORD --data-file=-
 printf 'YOUR_GOOGLE_API_KEY' | gcloud secrets create GOOGLE_API_KEY --data-file=-
+openssl rand -hex 32 | gcloud secrets create CLOUD_TASKS_TOKEN --data-file=-
 ```
 
 Cloud Run 実行用 service account に secret access を付けます。
@@ -205,11 +212,33 @@ gcloud secrets add-iam-policy-binding ADMIN_PASSWORD \
 gcloud secrets add-iam-policy-binding GOOGLE_API_KEY \
   --member="serviceAccount:photo-contest-run@PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding CLOUD_TASKS_TOKEN \
+  --member="serviceAccount:photo-contest-run@PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
 ```
 
 使わない secret は作成・付与しなくて大丈夫です。
 
-## 13. ここまで終わったら
+## 13. Cloud Tasks queue を作る
+
+ブラウザを閉じても採点ジョブを進めたいなら、queue を 1 つ作ります。
+
+```bash
+gcloud tasks queues create judging-jobs \
+  --location=asia-northeast1 \
+  --max-concurrent-dispatches=1 \
+  --max-dispatches-per-second=0.15
+```
+
+ポイント:
+
+- `max-concurrent-dispatches=1`
+  - Gemini 呼び出しを常に 1 件ずつ進める
+- `max-dispatches-per-second=0.15`
+  - 1 秒あたり最大 0.15 dispatch。安全側の目安
+
+## 14. ここまで終わったら
 
 ここまでで、ようやく `docs/cloud-run.md` の deploy 手順に入れます。
 
@@ -219,7 +248,7 @@ gcloud secrets add-iam-policy-binding GOOGLE_API_KEY \
 - `gcloud run deploy --source .`
 - 発行された `run.app` URL を `APP_URL` に入れて再 deploy
 
-## 14. もし詰まりやすい点
+## 15. もし詰まりやすい点
 
 - project 作成で権限不足
   - `roles/resourcemanager.projectCreator` がない可能性があります

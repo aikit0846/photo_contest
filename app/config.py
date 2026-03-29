@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     google_model: str = "gemini-2.5-flash"
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "gemma3:4b"
+    cloud_tasks_project: str | None = None
+    cloud_tasks_location: str | None = None
+    cloud_tasks_queue: str | None = None
+    cloud_tasks_token: str | None = None
 
     max_upload_mb: int = 20
     target_image_max_edge: int = 1600

@@ -30,6 +30,8 @@ from app.services.contest import refresh_balanced_scores
 from app.services.contest import provider_choices
 from app.services.contest import provider_status
 from app.services.contest import short_comment
+from app.services.judging_jobs import cloud_tasks_ready
+from app.services.judging_jobs import start_judging_job
 from app.storage import BaseImageStorage
 from app.storage import get_storage
 
@@ -57,6 +59,7 @@ def dashboard(
         if submission.guest is None or not submission.guest.eligible or submission.is_excluded
     ]
     top_entries = leaderboard(repository, limit=10)
+    active_judging_job = repository.get_active_judging_job()
     feedback_rank_lookup = {
         item.id: index + 1
         for index, item in enumerate(leaderboard(repository, limit=3))
@@ -73,6 +76,8 @@ def dashboard(
             "stats": event_stats(repository),
             "provider_choices": provider_choices(),
             "provider_status": provider_status(settings),
+            "cloud_tasks_ready": cloud_tasks_ready(settings),
+            "active_judging_job": active_judging_job,
             "effective_score": effective_score,
             "feedback_lines_for_submission": feedback_lines_for_submission,
             "feedback_rank_lookup": feedback_rank_lookup,
@@ -317,6 +322,87 @@ async def plan_judging(
         force=bool(payload.get("force")),
     )
     return JSONResponse(plan)
+
+
+@router.post("/judging-jobs/start")
+async def start_judging(
+    request: Request,
+    repository: ContestRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> JSONResponse:
+    payload = await request.json()
+    try:
+        job, started = start_judging_job(
+            repository,
+            settings=settings,
+            force=bool(payload.get("force")),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if job is None:
+        return JSONResponse({"status": "empty"})
+
+    return JSONResponse(
+        {
+            "status": "started" if started else "already_running",
+            "job": {
+                "id": job.id,
+                "state": job.state,
+                "provider_name": job.provider_name,
+                "total_count": job.total_count,
+                "processed_count": job.processed_count,
+                "success_count": job.success_count,
+                "error_count": job.error_count,
+                "latest_error": job.latest_error,
+            },
+        },
+    )
+
+
+@router.get("/judging-jobs/{job_id}")
+def judging_job_status(
+    job_id: str,
+    repository: ContestRepository = Depends(get_repository),
+) -> JSONResponse:
+    job = repository.get_judging_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    return JSONResponse(
+        {
+            "id": job.id,
+            "state": job.state,
+            "provider_name": job.provider_name,
+            "total_count": job.total_count,
+            "processed_count": job.processed_count,
+            "success_count": job.success_count,
+            "error_count": job.error_count,
+            "latest_error": job.latest_error,
+        },
+    )
+
+
+@router.get("/judging-jobs/current")
+def current_judging_job_status(
+    repository: ContestRepository = Depends(get_repository),
+) -> JSONResponse:
+    job = repository.get_active_judging_job()
+    if job is None:
+        return JSONResponse({"job": None})
+    return JSONResponse(
+        {
+            "job": {
+                "id": job.id,
+                "state": job.state,
+                "provider_name": job.provider_name,
+                "total_count": job.total_count,
+                "processed_count": job.processed_count,
+                "success_count": job.success_count,
+                "error_count": job.error_count,
+                "latest_error": job.latest_error,
+            },
+        },
+    )
 
 
 @router.post("/submissions/judge/batch")

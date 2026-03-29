@@ -290,6 +290,8 @@
 
 ## 次にやる順番
 
-1. `2026-04-12` 枠の Gemini recovery test
-2. `2026-04-17` 枠の Gemini smoke test
-3. 実プロジェクター接続で `presentation` の 16:9 最終確認
+1. Cloud Tasks queue / secret / env を設定して、Cloud Tasks + job 方式を再デプロイする
+2. iPhone で採点開始 -> MacBook で進捗確認、の end-to-end を確認する
+3. `2026-04-12` 枠の Gemini recovery test
+4. `2026-04-17` 枠の Gemini smoke test
+5. 実プロジェクター接続で `presentation` の 16:9 最終確認

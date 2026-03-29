@@ -10,6 +10,9 @@ Docker を使わず、`Cloud Shell` から `gcloud run deploy --source .` する
 - `SERVICE_NAME=wedding-photo-contest`
 - `ADMIN_PASSWORD`
 - 使うなら `GOOGLE_API_KEY`
+- 採点ジョブをブラウザから切り離したいなら:
+  - `CLOUD_TASKS_QUEUE=judging-jobs`
+  - `CLOUD_TASKS_TOKEN`
 
 ## このプロジェクトで使う値
 
@@ -150,12 +153,43 @@ gcloud run deploy "$SERVICE_NAME" \
   --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest
 ```
 
+#### Cloud Tasks で採点ジョブを回す場合の再デプロイ
+
+iPhone で開始だけ押して離れたいなら、Cloud Tasks を有効にした状態で再 deploy します。
+
+```bash
+export CLOUD_TASKS_QUEUE=judging-jobs
+
+gcloud run deploy "$SERVICE_NAME" \
+  --source . \
+  --region "$REGION" \
+  --allow-unauthenticated \
+  --service-account "photo-contest-run@$PROJECT_ID.iam.gserviceaccount.com" \
+  --cpu 1 \
+  --memory 1Gi \
+  --concurrency 8 \
+  --max-instances 3 \
+  --min-instances 0 \
+  --timeout 60 \
+  --set-env-vars APP_URL="$APP_URL",DATA_BACKEND=firestore,STORAGE_BACKEND=gcs,FIRESTORE_PROJECT="$PROJECT_ID",FIRESTORE_DATABASE='(default)',GCS_BUCKET="$BUCKET_NAME",AI_PROVIDER=auto,CLOUD_TASKS_PROJECT="$PROJECT_ID",CLOUD_TASKS_LOCATION="$REGION",CLOUD_TASKS_QUEUE="$CLOUD_TASKS_QUEUE" \
+  --update-secrets ADMIN_PASSWORD=ADMIN_PASSWORD:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,CLOUD_TASKS_TOKEN=CLOUD_TASKS_TOKEN:latest
+```
+
+この構成では:
+
+- 採点開始は iPhone から押せる
+- その後の task 実行は Cloud Tasks が進める
+- MacBook Air では `/admin` を開いて進捗確認と結果確認だけすればよい
+
 ### 5. デプロイ後の確認
 
 - `GET /health` が `ok`
 - `/admin` に入れる
 - `/presentation` が崩れていない
 - 必要なら `AI_PROVIDER=mock` で採点を通す
+- Cloud Tasks を有効にした場合:
+  - `/admin` で採点開始後、別端末から開いても進捗が見える
+  - 開始端末を閉じても採点が継続する
 
 ## GCP 側でやること
 

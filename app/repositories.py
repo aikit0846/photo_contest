@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from dataclasses import asdict
 from datetime import datetime
 from functools import lru_cache
+import json
 from typing import Protocol
 
 from google.cloud import firestore
@@ -17,6 +18,7 @@ from app.config import get_settings
 from app.database import SessionLocal
 from app.domain import EventRecord
 from app.domain import GuestRecord
+from app.domain import JudgingJobRecord
 from app.domain import ScoreRecord
 from app.domain import SubmissionRecord
 from app.domain import utcnow
@@ -88,6 +90,30 @@ class ContestRepository(Protocol):
     ) -> GuestRecord: ...
 
     def delete_guest(self, guest_id: str) -> None: ...
+
+    def create_judging_job(
+        self,
+        *,
+        provider_name: str,
+        total_count: int,
+    ) -> JudgingJobRecord: ...
+
+    def get_judging_job(self, job_id: str) -> JudgingJobRecord | None: ...
+
+    def get_active_judging_job(self) -> JudgingJobRecord | None: ...
+
+    def mark_judging_job_running(self, job_id: str, *, total_count: int) -> JudgingJobRecord: ...
+
+    def advance_judging_job(
+        self,
+        job_id: str,
+        *,
+        submission_id: str,
+        success: bool,
+        error: str | None = None,
+    ) -> JudgingJobRecord: ...
+
+    def fail_judging_job(self, job_id: str, *, error: str) -> JudgingJobRecord: ...
 
     def list_submissions(self) -> list[SubmissionRecord]: ...
 
@@ -165,6 +191,23 @@ class SqliteContestRepository:
             model_hint=value.model_hint,
             created_at=_dt(value.created_at),
             updated_at=_dt(value.updated_at),
+        )
+
+    def _judging_job_record(self, value: sql_models.JudgingJob) -> JudgingJobRecord:
+        return JudgingJobRecord(
+            id=value.id,
+            state=value.state,
+            provider_name=value.provider_name,
+            total_count=int(value.total_count),
+            processed_count=int(value.processed_count),
+            success_count=int(value.success_count),
+            error_count=int(value.error_count),
+            latest_error=value.latest_error,
+            processed_submission_ids=json.loads(value.processed_submission_ids or "[]"),
+            created_at=_dt(value.created_at),
+            updated_at=_dt(value.updated_at),
+            started_at=_dt(value.started_at) if value.started_at is not None else None,
+            finished_at=_dt(value.finished_at) if value.finished_at is not None else None,
         )
 
     def _score_record(self, value: sql_models.Score) -> ScoreRecord:
@@ -387,6 +430,107 @@ class SqliteContestRepository:
             session.delete(guest)
             session.commit()
 
+    def create_judging_job(
+        self,
+        *,
+        provider_name: str,
+        total_count: int,
+    ) -> JudgingJobRecord:
+        with SessionLocal() as session:
+            job = sql_models.JudgingJob(
+                id=uuid.uuid4().hex,
+                state="queued",
+                provider_name=provider_name,
+                total_count=total_count,
+                processed_count=0,
+                success_count=0,
+                error_count=0,
+                processed_submission_ids="[]",
+            )
+            session.add(job)
+            session.commit()
+            session.refresh(job)
+            return self._judging_job_record(job)
+
+    def get_judging_job(self, job_id: str) -> JudgingJobRecord | None:
+        with SessionLocal() as session:
+            job = session.get(sql_models.JudgingJob, job_id)
+            return self._judging_job_record(job) if job is not None else None
+
+    def get_active_judging_job(self) -> JudgingJobRecord | None:
+        with SessionLocal() as session:
+            statement = (
+                select(sql_models.JudgingJob)
+                .where(sql_models.JudgingJob.state.in_(("queued", "running")))
+                .order_by(sql_models.JudgingJob.created_at.desc())
+            )
+            job = session.scalars(statement).first()
+            return self._judging_job_record(job) if job is not None else None
+
+    def mark_judging_job_running(self, job_id: str, *, total_count: int) -> JudgingJobRecord:
+        with SessionLocal() as session:
+            job = session.get(sql_models.JudgingJob, job_id)
+            if job is None:
+                raise KeyError(job_id)
+            now = utcnow()
+            job.state = "running"
+            job.total_count = total_count
+            if job.started_at is None:
+                job.started_at = now
+            job.updated_at = now
+            session.commit()
+            session.refresh(job)
+            return self._judging_job_record(job)
+
+    def advance_judging_job(
+        self,
+        job_id: str,
+        *,
+        submission_id: str,
+        success: bool,
+        error: str | None = None,
+    ) -> JudgingJobRecord:
+        with SessionLocal() as session:
+            job = session.get(sql_models.JudgingJob, job_id)
+            if job is None:
+                raise KeyError(job_id)
+            processed_submission_ids = json.loads(job.processed_submission_ids or "[]")
+            if submission_id in processed_submission_ids:
+                return self._judging_job_record(job)
+            now = utcnow()
+            if job.started_at is None:
+                job.started_at = now
+            job.state = "running"
+            processed_submission_ids.append(submission_id)
+            job.processed_submission_ids = json.dumps(processed_submission_ids)
+            job.processed_count += 1
+            if success:
+                job.success_count += 1
+            else:
+                job.error_count += 1
+                job.latest_error = error
+            if job.processed_count >= job.total_count:
+                job.state = "completed"
+                job.finished_at = now
+            job.updated_at = now
+            session.commit()
+            session.refresh(job)
+            return self._judging_job_record(job)
+
+    def fail_judging_job(self, job_id: str, *, error: str) -> JudgingJobRecord:
+        with SessionLocal() as session:
+            job = session.get(sql_models.JudgingJob, job_id)
+            if job is None:
+                raise KeyError(job_id)
+            now = utcnow()
+            job.state = "failed"
+            job.latest_error = error
+            job.finished_at = now
+            job.updated_at = now
+            session.commit()
+            session.refresh(job)
+            return self._judging_job_record(job)
+
     def list_submissions(self) -> list[SubmissionRecord]:
         with SessionLocal() as session:
             statement = select(sql_models.Submission).options(
@@ -586,6 +730,7 @@ class FirestoreContestRepository:
             database=settings.firestore_database or None,
         )
         self.events = self.client.collection("events")
+        self.judging_jobs = self.client.collection("judging_jobs")
         self.guests = self.client.collection("guests")
         self.submissions = self.client.collection("submissions")
 
@@ -602,6 +747,23 @@ class FirestoreContestRepository:
             model_hint=data.get("model_hint"),
             created_at=_dt(data.get("created_at")),
             updated_at=_dt(data.get("updated_at")),
+        )
+
+    def _judging_job_record(self, document_id: str, data: dict) -> JudgingJobRecord:
+        return JudgingJobRecord(
+            id=document_id,
+            state=data.get("state", "queued"),
+            provider_name=data.get("provider_name", ""),
+            total_count=int(data.get("total_count", 0)),
+            processed_count=int(data.get("processed_count", 0)),
+            success_count=int(data.get("success_count", 0)),
+            error_count=int(data.get("error_count", 0)),
+            latest_error=data.get("latest_error"),
+            processed_submission_ids=[str(item) for item in data.get("processed_submission_ids", [])],
+            created_at=_dt(data.get("created_at")),
+            updated_at=_dt(data.get("updated_at")),
+            started_at=_dt(data.get("started_at")) if data.get("started_at") is not None else None,
+            finished_at=_dt(data.get("finished_at")) if data.get("finished_at") is not None else None,
         )
 
     def _score_record(self, submission_id: str, data: dict | None) -> ScoreRecord | None:
@@ -838,6 +1000,122 @@ class FirestoreContestRepository:
             submission_id, _payload = existing_submission
             self.submissions.document(submission_id).delete()
         self.guests.document(guest_id).delete()
+
+    def create_judging_job(
+        self,
+        *,
+        provider_name: str,
+        total_count: int,
+    ) -> JudgingJobRecord:
+        job_id = uuid.uuid4().hex
+        now = utcnow()
+        payload = {
+            "state": "queued",
+            "provider_name": provider_name,
+            "total_count": total_count,
+            "processed_count": 0,
+            "success_count": 0,
+            "error_count": 0,
+            "latest_error": None,
+            "processed_submission_ids": [],
+            "created_at": now,
+            "updated_at": now,
+            "started_at": None,
+            "finished_at": None,
+        }
+        self.judging_jobs.document(job_id).set(payload)
+        return self._judging_job_record(job_id, payload)
+
+    def get_judging_job(self, job_id: str) -> JudgingJobRecord | None:
+        snapshot = self.judging_jobs.document(job_id).get()
+        if not snapshot.exists:
+            return None
+        return self._judging_job_record(snapshot.id, snapshot.to_dict())
+
+    def get_active_judging_job(self) -> JudgingJobRecord | None:
+        jobs = [
+            self._judging_job_record(snapshot.id, snapshot.to_dict())
+            for snapshot in self.judging_jobs.stream()
+        ]
+        active = [job for job in jobs if job.state in {"queued", "running"}]
+        if not active:
+            return None
+        return sorted(active, key=lambda job: job.created_at, reverse=True)[0]
+
+    def mark_judging_job_running(self, job_id: str, *, total_count: int) -> JudgingJobRecord:
+        doc = self.judging_jobs.document(job_id)
+        snapshot = doc.get()
+        if not snapshot.exists:
+            raise KeyError(job_id)
+        data = snapshot.to_dict()
+        now = utcnow()
+        patch = {
+            "state": "running",
+            "total_count": total_count,
+            "updated_at": now,
+        }
+        if data.get("started_at") is None:
+            patch["started_at"] = now
+        doc.set(patch, merge=True)
+        data.update(patch)
+        return self._judging_job_record(job_id, data)
+
+    def advance_judging_job(
+        self,
+        job_id: str,
+        *,
+        submission_id: str,
+        success: bool,
+        error: str | None = None,
+    ) -> JudgingJobRecord:
+        doc = self.judging_jobs.document(job_id)
+        snapshot = doc.get()
+        if not snapshot.exists:
+            raise KeyError(job_id)
+        data = snapshot.to_dict()
+        processed_submission_ids = [str(item) for item in data.get("processed_submission_ids", [])]
+        if submission_id in processed_submission_ids:
+            return self._judging_job_record(job_id, data)
+        now = utcnow()
+        processed_submission_ids.append(submission_id)
+        processed_count = int(data.get("processed_count", 0)) + 1
+        success_count = int(data.get("success_count", 0)) + (1 if success else 0)
+        error_count = int(data.get("error_count", 0)) + (0 if success else 1)
+        patch = {
+            "state": "running",
+            "processed_count": processed_count,
+            "success_count": success_count,
+            "error_count": error_count,
+            "processed_submission_ids": processed_submission_ids,
+            "updated_at": now,
+        }
+        if data.get("started_at") is None:
+            patch["started_at"] = now
+        if not success:
+            patch["latest_error"] = error
+        if processed_count >= int(data.get("total_count", 0)):
+            patch["state"] = "completed"
+            patch["finished_at"] = now
+        doc.set(patch, merge=True)
+        data.update(patch)
+        return self._judging_job_record(job_id, data)
+
+    def fail_judging_job(self, job_id: str, *, error: str) -> JudgingJobRecord:
+        doc = self.judging_jobs.document(job_id)
+        snapshot = doc.get()
+        if not snapshot.exists:
+            raise KeyError(job_id)
+        data = snapshot.to_dict()
+        now = utcnow()
+        patch = {
+            "state": "failed",
+            "latest_error": error,
+            "finished_at": now,
+            "updated_at": now,
+        }
+        doc.set(patch, merge=True)
+        data.update(patch)
+        return self._judging_job_record(job_id, data)
 
     def list_submissions(self) -> list[SubmissionRecord]:
         guest_snapshots = {snapshot.id: snapshot.to_dict() for snapshot in self.guests.stream()}

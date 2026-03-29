@@ -12,6 +12,7 @@ from app.repositories import get_repository
 from app.routers import admin
 from app.routers import presentation
 from app.routers import public
+from app.routers import tasks
 from app.services.contest import get_event
 from app.storage import get_storage
 
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
     app.include_router(public.router)
     app.include_router(admin.router)
     app.include_router(presentation.router)
+    app.include_router(tasks.router)
     return app
 
 

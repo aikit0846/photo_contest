@@ -87,6 +87,10 @@ uv run python scripts/load_test_dataset.py seed --tag rehearsal-real --count 70 
 - `AI_PROVIDER`: `auto`, `mock`, `gemini`, `ollama`
 - `GOOGLE_API_KEY`
 - `GOOGLE_MODEL`
+- `CLOUD_TASKS_PROJECT`
+- `CLOUD_TASKS_LOCATION`
+- `CLOUD_TASKS_QUEUE`
+- `CLOUD_TASKS_TOKEN`
 - `OLLAMA_BASE_URL`
 - `OLLAMA_MODEL`
 - `TARGET_IMAGE_MAX_EDGE`

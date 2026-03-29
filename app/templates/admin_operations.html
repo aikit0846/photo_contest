@@ -250,6 +250,8 @@
 
     const submitButton = form.querySelector('button[type="submit"]');
     const forceInput = form.querySelector('input[name="force"]');
+    const useServerJobs = {{ "true" if cloud_tasks_ready else "false" }};
+    const initialJobId = {{ ('"' ~ active_judging_job.id ~ '"') if active_judging_job else 'null' }};
     let running = false;
 
     function setRunningState(active) {
@@ -275,8 +277,61 @@
       return response.json();
     }
 
+    async function getJson(url) {
+      const response = await fetch(url, {
+        headers: {
+          "Accept": "application/json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    }
+
     function delay(ms) {
       return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    function finishWithJob(job) {
+      if (job.state === "failed") {
+        window.location.href =
+          `/admin?error=${encodeURIComponent(job.latest_error || "採点ジョブの起動に失敗しました。")}`;
+        return;
+      }
+      if (Number(job.error_count || 0) > 0) {
+        window.location.href =
+          `/admin?error=${encodeURIComponent(`${job.success_count}件を採点し、${job.error_count}件でエラーがありました。(${job.provider_name})`)}`;
+        return;
+      }
+      window.location.href =
+        `/admin?message=${encodeURIComponent(`${job.success_count}件を採点しました。(${job.provider_name})`)}`;
+    }
+
+    function renderJobStatus(job) {
+      status.hidden = false;
+      status.textContent =
+        `採点ジョブ実行中... ${job.processed_count}/${job.total_count} 件 (${job.provider_name})`;
+    }
+
+    async function pollJob(jobId) {
+      setRunningState(true);
+      while (true) {
+        const job = await getJson(`/admin/judging-jobs/${jobId}`);
+        if (job.state === "completed" || job.state === "failed") {
+          finishWithJob(job);
+          return;
+        }
+        renderJobStatus(job);
+        await delay(2000);
+      }
+    }
+
+    async function discoverCurrentJob() {
+      const result = await getJson("/admin/judging-jobs/current");
+      if (result.job && result.job.id) {
+        await pollJob(result.job.id);
+      }
     }
 
     form.addEventListener("submit", async (event) => {
@@ -287,9 +342,23 @@
 
       setRunningState(true);
       status.hidden = false;
-      status.textContent = "採点対象を確認しています。このページは閉じずに開いたままにしてください。";
+      status.textContent = useServerJobs
+        ? "採点ジョブを作成しています。開始後は別端末からでも進捗確認できます。"
+        : "採点対象を確認しています。このページは閉じずに開いたままにしてください。";
 
       try {
+        if (useServerJobs) {
+          const result = await postJson("/admin/judging-jobs/start", {
+            force: Boolean(forceInput && forceInput.checked),
+          });
+          if (result.status === "empty") {
+            window.location.href = "/admin?message=採点対象はありませんでした。";
+            return;
+          }
+          await pollJob(result.job.id);
+          return;
+        }
+
         const plan = await postJson("/admin/submissions/judge/plan", {
           force: Boolean(forceInput && forceInput.checked),
         });
@@ -355,6 +424,20 @@
           "採点の分割実行に失敗しました。`force` を付けずにもう一度実行すると、未採点と failed から再開できます。";
       }
     });
+
+    if (useServerJobs && initialJobId) {
+      pollJob(initialJobId).catch(() => {
+        setRunningState(false);
+        status.hidden = false;
+        status.textContent = "採点ジョブの進捗取得に失敗しました。ページを再読み込みしてください。";
+      });
+    } else if (useServerJobs) {
+      window.setInterval(() => {
+        if (!running) {
+          discoverCurrentJob().catch(() => {});
+        }
+      }, 5000);
+    }
   })();
 </script>
 {% endblock %}
