@@ -1,6 +1,6 @@
 # Wedding Photo Contest Remaining Tasks
 
-2026-03-28 時点の残タスク整理です。
+2026-03-29 時点の残タスク整理です。
 
 ## 現在地
 
@@ -20,6 +20,7 @@
 - `/presentation` は Cloud Run 上でアクセス可能
 - `/health` は Cloud Run 上で `ok` を確認済み
 - フォント修正は Cloud Run 上で PC / スマホともに問題ないことを確認済み
+- 会場 Wi-Fi でも `70` 件の Gemini 採点が `15分強` で問題なく動くことを確認済み
 - `/healthz` は Cloud Run 上で 404
   - 原因判明: Cloud Run の既知制約で、`/healthz` のような一部予約パスは外部 URL で使えない
   - 対応済み: Cloud Run 上の疎通確認は `/health` に統一した
@@ -125,6 +126,16 @@
     - 画面表示は問題なさそう
   - 未確認:
     - 実プロジェクター接続での 16:9 最終確認
+
+- [ ] `feedback_released` が公開状態のまま guest 投稿すると、iPhone で結果公開系の画面が出続ける不具合を確認・修正する
+  - 会場での実験中、iPhone から guest 画面に入って投稿すると `結果が公開されました` 系の画面が出た
+  - 投稿を締め切っても、その表示が出続けた
+  - 実験時は `feedback_released=true` だったので、その影響が濃厚
+  - 本来は投稿締切後のデフォルト状態が `フィードバック非公開` であってほしい
+  - 未検証:
+    - iPhone 固有か
+    - `feedback_released` を非公開に戻せば再現しないか
+    - 投稿受付の開閉と `feedback_released` の組み合わせで、期待どおりの guest 画面になるか
 
 - [x] 本番 URL を最終確定して、共通 QR の印刷物に反映する
   - 現在の Cloud Run URL で進める前提
@@ -283,7 +294,8 @@
 
 ## 次にやる順番
 
-1. `2026-04-12` 枠の Gemini recovery test
-2. `2026-04-17` 枠の Gemini smoke test
-3. 実プロジェクター接続で `presentation` の 16:9 最終確認
-4. 管理画面の投稿一覧で、フィードバック用コメント全文を表示する
+1. `feedback_released` が公開状態のまま guest 投稿すると、iPhone で結果公開系の画面が出続ける不具合の確認と修正
+2. `2026-04-12` 枠の Gemini recovery test
+3. `2026-04-17` 枠の Gemini smoke test
+4. 実プロジェクター接続で `presentation` の 16:9 最終確認
+5. 管理画面の投稿一覧で、フィードバック用コメント全文を表示する
