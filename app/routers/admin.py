@@ -130,7 +130,10 @@ def toggle_event(
     settings: Settings = Depends(get_settings),
 ) -> RedirectResponse:
     event = get_event(repository, settings)
-    updated = repository.update_event(submissions_open=not event.submissions_open)
+    updated = repository.update_event(
+        submissions_open=not event.submissions_open,
+        feedback_released=False,
+    )
     state = "再開" if updated.submissions_open else "締切"
     return RedirectResponse(f"/admin?message=投稿受付を{state}にしました。", status_code=303)
 
@@ -154,10 +157,17 @@ def update_provider(
 def release_feedback(
     redirect_to: str | None = Form(default=None),
     repository: ContestRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
 ) -> RedirectResponse:
-    repository.update_event(feedback_released=True)
+    event = get_event(repository, settings)
     target = redirect_to or "/admin"
     separator = "&" if "?" in target else "?"
+    if event.submissions_open:
+        return RedirectResponse(
+            f"{target}{separator}error=投稿受付中はゲスト向けフィードバックを公開できません。",
+            status_code=303,
+        )
+    repository.update_event(feedback_released=True)
     return RedirectResponse(
         f"{target}{separator}message=ゲスト向けフィードバックを公開しました。",
         status_code=303,

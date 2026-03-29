@@ -78,7 +78,11 @@ def join_page(
     if guest is None:
         raise HTTPException(status_code=404, detail="Invite link not found.")
     submission = guest.submission
-    feedback_visible = bool(event.feedback_released and submission is not None)
+    feedback_visible = bool(
+        not event.submissions_open
+        and event.feedback_released
+        and submission is not None
+    )
     feedback_ready = bool(
         feedback_visible
         and submission is not None
