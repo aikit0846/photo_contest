@@ -199,7 +199,7 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 ```bash
 printf 'YOUR_ADMIN_PASSWORD' | gcloud secrets create ADMIN_PASSWORD --data-file=-
 printf 'YOUR_GOOGLE_API_KEY' | gcloud secrets create GOOGLE_API_KEY --data-file=-
-openssl rand -hex 32 | gcloud secrets create CLOUD_TASKS_TOKEN --data-file=-
+printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create CLOUD_TASKS_TOKEN --data-file=-
 ```
 
 Cloud Run 実行用 service account に secret access を付けます。

@@ -22,7 +22,7 @@ def cloud_tasks_ready(settings: Settings) -> bool:
         cloud_tasks_project(settings)
         and settings.cloud_tasks_location
         and settings.cloud_tasks_queue
-        and settings.cloud_tasks_token
+        and normalized_task_token(settings)
         and settings.app_url
     )
 
@@ -93,7 +93,7 @@ def enqueue_judging_task(
                 "url": callback_url,
                 "headers": {
                     "Content-Type": "application/json",
-                    "X-Task-Token": settings.cloud_tasks_token,
+                    "X-Task-Token": normalized_task_token(settings),
                 },
                 "body": base64.b64encode(json.dumps(payload).encode("utf-8")).decode("ascii"),
             },
@@ -125,7 +125,12 @@ def verify_task_token(
     provided_token: str | None,
     settings: Settings,
 ) -> None:
-    if not settings.cloud_tasks_token:
+    expected_token = normalized_task_token(settings)
+    if not expected_token:
         raise PermissionError("Cloud Tasks token is not configured.")
-    if provided_token != settings.cloud_tasks_token:
+    if (provided_token or "").strip() != expected_token:
         raise PermissionError("Invalid task token.")
+
+
+def normalized_task_token(settings: Settings) -> str:
+    return (settings.cloud_tasks_token or "").strip()
