@@ -138,7 +138,12 @@
           </p>
           {% endif %}
           {% if submission.score %}
-          <p><strong>{{ effective_score(submission) }} 点</strong> / {{ short_comment(submission) }}</p>
+          <p><strong>{{ effective_score(submission) }} 点</strong></p>
+          <div class="submission-feedback-comments">
+            {% for line in feedback_lines_for_submission(submission, feedback_rank_lookup.get(submission.id)) %}
+            <p class="submission-feedback-comment">{{ line }}</p>
+            {% endfor %}
+          </div>
           {% endif %}
           {% if submission.judge_error %}
           <p class="error-text">Error: {{ submission.judge_error }}</p>
@@ -201,7 +206,12 @@
             {% endif %}
           </p>
           {% if submission.score %}
-          <p><strong>{{ effective_score(submission) }} 点</strong> / {{ short_comment(submission) }}</p>
+          <p><strong>{{ effective_score(submission) }} 点</strong></p>
+          <div class="submission-feedback-comments">
+            {% for line in feedback_lines_for_submission(submission, feedback_rank_lookup.get(submission.id)) %}
+            <p class="submission-feedback-comment">{{ line }}</p>
+            {% endfor %}
+          </div>
           {% endif %}
           {% if submission.judge_error %}
           <p class="error-text">Error: {{ submission.judge_error }}</p>

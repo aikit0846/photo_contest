@@ -19,6 +19,7 @@ from app.services.contest import common_entry_url
 from app.services.contest import create_guest
 from app.services.contest import effective_score
 from app.services.contest import event_stats
+from app.services.contest import feedback_lines_for_submission
 from app.services.contest import get_event
 from app.services.contest import judge_submission_batch
 from app.services.contest import judge_submissions
@@ -56,6 +57,10 @@ def dashboard(
         if submission.guest is None or not submission.guest.eligible or submission.is_excluded
     ]
     top_entries = leaderboard(repository, limit=10)
+    feedback_rank_lookup = {
+        item.id: index + 1
+        for index, item in enumerate(leaderboard(repository, limit=3))
+    }
     return templates.TemplateResponse(
         "admin_operations.html",
         {
@@ -69,6 +74,8 @@ def dashboard(
             "provider_choices": provider_choices(),
             "provider_status": provider_status(settings),
             "effective_score": effective_score,
+            "feedback_lines_for_submission": feedback_lines_for_submission,
+            "feedback_rank_lookup": feedback_rank_lookup,
             "podium_comment": podium_comment,
             "short_comment": short_comment,
             "admin_section": "operations",

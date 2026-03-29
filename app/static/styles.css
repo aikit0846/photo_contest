@@ -802,6 +802,17 @@ select {
   color: var(--muted);
 }
 
+.submission-feedback-comments {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.submission-feedback-comment {
+  margin: 0;
+  line-height: 1.6;
+}
+
 .compact-grid {
   display: grid;
   gap: 10px;

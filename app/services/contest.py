@@ -430,6 +430,12 @@ def short_comment(submission: SubmissionRecord) -> str:
     return submission.score.positive_comment_1 or submission.score.summary
 
 
+def feedback_lines_for_submission(submission: SubmissionRecord, rank: int | None = None) -> list[str]:
+    if rank is not None:
+        return podium_comment_lines(submission, rank)
+    return feedback_comments(submission)
+
+
 def podium_comment(submission: SubmissionRecord, rank: int) -> str:
     return " ".join(podium_comment_lines(submission, rank))
 
