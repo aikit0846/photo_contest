@@ -205,6 +205,10 @@ gcloud tasks queues describe judging-jobs \
 
 ### 2026-03-29: スクリプト sanity check
 
+ステータス:
+
+- 完了
+
 目的:
 
 - 一括投入 / status / cleanup の流れが壊れていないことを確認する
@@ -269,6 +273,12 @@ uv run python scripts/load_test_dataset.py status --tag 2026-03-29-sanity
 使用する Gemini request:
 
 - `0`
+
+実施結果:
+
+- Cloud Tasks + job 方式での最小 sanity check は完了
+- `12件 + mock` では進捗表示が出る前に完了することがあった
+- この規模では表示が見えないこと自体は想定内と判断
 
 ### 2026-03-31: 70 件 mock rehearsal
 

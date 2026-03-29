@@ -144,6 +144,10 @@
   - 所属カテゴリ
   - テストユーザー併用前提の状態に整理済み
 
+- [ ] ゲスト選択画面の並び順を 50 音順にする
+  - カテゴリ内の guest 一覧を、実運用で探しやすい並びにしたい
+  - 現在の並び順が 50 音順でない可能性があるので、確認して必要なら修正する
+
 - [x] 当日運用手順を 1 回 rehearsal した
   - 投稿受付を開く
   - 数件投稿する
@@ -290,8 +294,8 @@
 
 ## 次にやる順番
 
-1. Cloud Tasks queue / secret / env を設定して、Cloud Tasks + job 方式を再デプロイする
-2. iPhone で採点開始 -> MacBook で進捗確認、の end-to-end を確認する
-3. `2026-04-12` 枠の Gemini recovery test
-4. `2026-04-17` 枠の Gemini smoke test
-5. 実プロジェクター接続で `presentation` の 16:9 最終確認
+1. iPhone で採点開始 -> MacBook で進捗確認、の end-to-end を確認する
+2. `2026-04-12` 枠の Gemini recovery test
+3. `2026-04-17` 枠の Gemini smoke test
+4. 実プロジェクター接続で `presentation` の 16:9 最終確認
+5. ゲスト選択画面の並び順を 50 音順にする
