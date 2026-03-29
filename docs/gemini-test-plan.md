@@ -282,6 +282,11 @@ uv run python scripts/load_test_dataset.py status --tag 2026-03-29-sanity
 
 ### 2026-03-31: 70 件 mock rehearsal
 
+ステータス:
+
+- 完了
+- `2026-03-31` 枠の rehearsal は前倒しで実施済み
+
 目的:
 
 - 70 件規模の guest / submission / cleanup が問題ないことを確認する
@@ -347,6 +352,14 @@ uv run python scripts/load_test_dataset.py status --tag 2026-03-31-mock70
 使用する Gemini request:
 
 - `0`
+
+実施結果:
+
+- PC から採点開始するパターンを確認した
+- iPhone から採点開始するパターンも確認した
+- iPhone は採点開始直後に画面ロック、PC も閉じた状態で継続した
+- しばらく待ってから PC を開き直し、画面更新すると結果が反映されていた
+- Cloud Tasks + job 方式で、開始端末から切り離した mock 採点が成立することを確認できた
 
 ### 2026-04-05: 70 件 Gemini full run 1 回目
 
