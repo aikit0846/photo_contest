@@ -633,6 +633,13 @@ uv run python scripts/load_test_dataset.py status --tag 2026-04-12-gemini70-reco
 - 本番直前の軽い確認
 - ここでは 70 件は回さない
 
+先行確認メモ:
+
+- `10` 件の Gemini テストで、iPhone の Chrome から採点開始してすぐ画面ロックしても、前回の失敗系 UI は再現しなかった
+- iPhone 側では進捗表示が出ることを確認できた
+- 一方で、MacBook Air 側はタブを更新しないと進捗表示や採点完了数が更新されない事象が残っている
+- したがって、この smoke test の主眼は「開始端末の UX が改善したか」と「監視端末の自動更新がまだ弱いか」の確認に置く
+
 手順:
 
 1. `/admin` で非テスト submission が 0 件であることを確認する。
