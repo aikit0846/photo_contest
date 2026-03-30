@@ -106,7 +106,7 @@ export CLOUD_TASKS_LOCATION="$REGION"
 export CLOUD_TASKS_QUEUE=judging-jobs
 gcloud config set project "$PROJECT_ID"
 gcloud config set run/region "$REGION"
-export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
+export APP_URL="https://wedding-photo-contest-228664142250.asia-northeast1.run.app"
 ```
 
 もし `gcloud run services describe ...` で認証エラーが出るときは、先に local 認証を更新する。
