@@ -25,11 +25,13 @@ export BUCKET_NAME=wedding-photo-contest-20260419-assets
 export SERVICE_NAME=wedding-photo-contest
 ```
 
-`APP_URL` だけは、Cloud Run service の実 URL を使います。
+`APP_URL` だけは、Cloud Run service の本番で採用する URL を明示して使います。
 
-- すでに service が存在するなら、先に現在の URL を取得してそのまま使えばよい
-- 同じ `SERVICE_NAME` に再 deploy する限り、通常は URL は変わらない
-- つまり再デプロイ時は、まず今の URL を見ればよい
+- この project では、canonical な本番 URL を次に固定する:
+  - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app`
+- Cloud Run は `run.app` と `a.run.app` など複数の正規 URL を返すことがある
+- `gcloud run services describe ... --format='value(status.url)'` が `a.run.app` 側を返しても、そのまま `APP_URL` に採用しない
+- QR コード、招待 URL、Cloud Tasks callback の整合を守るため、この repository では `APP_URL` を明示値で固定する
 
 ```bash
 gcloud run services describe "$SERVICE_NAME" \
@@ -37,10 +39,10 @@ gcloud run services describe "$SERVICE_NAME" \
   --format='value(status.url)'
 ```
 
-出てきた URL を `APP_URL` に入れます。例:
+上のコマンドは参考確認用です。`APP_URL` として採用するのは次の明示値です。
 
 ```bash
-export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format='value(status.url)')"
+export APP_URL="https://wedding-photo-contest-228664142250.asia-northeast1.run.app"
 echo "$APP_URL"
 ```
 
@@ -97,12 +99,18 @@ gcloud config set project "$PROJECT_ID"
 gcloud config set run/region "$REGION"
 ```
 
-### 3. いまの APP_URL を取得
+### 3. いまの APP_URL を確認する
 
-同じ Cloud Run service に再 deploy するなら、今の service URL をそのまま `APP_URL` に使えば大丈夫です。
+同じ Cloud Run service に再 deploy する場合でも、この project では `APP_URL` を明示値で固定して扱います。
+
+参考として `status.url` を見るのは構いませんが、返り値が `a.run.app` 側でもそのまま採用しないでください。
 
 ```bash
-export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format='value(status.url)')"
+gcloud run services describe "$SERVICE_NAME" \
+  --region "$REGION" \
+  --format='value(status.url)'
+
+export APP_URL="https://wedding-photo-contest-228664142250.asia-northeast1.run.app"
 echo "$APP_URL"
 ```
 
@@ -331,7 +339,11 @@ gcloud run services describe "$SERVICE_NAME" \
 まず URL を取得:
 
 ```bash
-export APP_URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format='value(status.url)')"
+gcloud run services describe "$SERVICE_NAME" \
+  --region "$REGION" \
+  --format='value(status.url)'
+
+export APP_URL="https://wedding-photo-contest-228664142250.asia-northeast1.run.app"
 echo "$APP_URL"
 ```
 
