@@ -537,17 +537,16 @@ uv run python scripts/load_test_dataset.py status --tag 2026-04-10-real20
 
 目的:
 
-- Cloud Tasks + job 方式で、開始端末から切り離して採点できるか確認する
-- iPhone で開始して、その後 MacBook Air だけで進捗と結果確認ができるか確認する
-- 本番前の最重要 e2e rehearsal
+- Cloud Tasks + job 方式で、部分失敗や queue 停止から回復できるか確認する
+- ブラウザ中断耐性ではなく、サーバジョブの recovery を確認する
+- 本番前の最重要 worst-case rehearsal
 
 先行確認メモ:
 
 - iPhone 12 の Chrome から採点開始して、すぐ画面ロックして 10 分程度放置しても、backend 側の採点自体は継続した
 - 最終的に `70` 件すべて完了した
 - 所要時間は `15分弱`
-- ただし開始端末側には失敗系メッセージが出ることがあり、進捗表示も安定していない
-- したがって、次の主眼は「完走性」よりも「進捗表示 / エラーメッセージ UX」の確認に寄る
+- したがって、次の主眼は「ブラウザを閉じても動くか」ではなく「queue pause/resume や partial failure から回復できるか」に置く
 
 手順:
 
@@ -593,23 +592,56 @@ iPhone Safari で $APP_URL/admin
 ```text
 ブラウザ操作:
 1. MacBook Air で $APP_URL/admin を開く
-2. 進捗が自動表示されることを確認する
-3. iPhone を触らずに最後まで完走するか確認する
+2. 途中まで進むことを確認する
+3. この時点ではまだ完走させない
 ```
 
-7. 採点後の状態を確認する。
+7. Cloud Shell から queue を一時停止する。
+
+```bash
+gcloud tasks queues pause judging-jobs \
+  --location=asia-northeast1 \
+  --project=wedding-photo-contest-20260419
+```
+
+8. 数分待って、採点件数がそれ以上進まないことを確認する。
+
+```text
+ブラウザ操作:
+1. MacBook Air の $APP_URL/admin を見る
+2. 必要ならタブを更新して、採点済み件数が止まっていることを確認する
+```
+
+9. queue を再開する。
+
+```bash
+gcloud tasks queues resume judging-jobs \
+  --location=asia-northeast1 \
+  --project=wedding-photo-contest-20260419
+```
+
+10. しばらく待って、採点が再開することを確認する。
+
+```text
+ブラウザ操作:
+1. MacBook Air の $APP_URL/admin を見る
+2. 必要ならタブを更新して、採点済み件数が再び増え始めることを確認する
+3. 最終的に 70 件が完走することを確認する
+```
+
+11. 採点後の状態を確認する。
 
 ```bash
 uv run python scripts/load_test_dataset.py status --tag 2026-04-12-gemini70-recovery
 ```
 
-8. テストデータを削除する。
+12. テストデータを削除する。
 
 ```bash
 uv run python scripts/load_test_dataset.py cleanup --tag 2026-04-12-gemini70-recovery --yes
 ```
 
-9. cleanup 後に、テストデータが 0 件に戻ったことを確認する。
+13. cleanup 後に、テストデータが 0 件に戻ったことを確認する。
 
 ```bash
 uv run python scripts/load_test_dataset.py status --tag 2026-04-12-gemini70-recovery
@@ -621,10 +653,11 @@ uv run python scripts/load_test_dataset.py status --tag 2026-04-12-gemini70-reco
 
 確認ポイント:
 
-- iPhone で開始後、開始端末を見続けなくても採点が継続するか
-- MacBook Air で途中から `/admin` を開いても progress が見えるか
+- queue pause 中に件数が止まるか
+- queue resume 後に件数が再び増えるか
 - `70` 件が最後まで完走するか
 - Cloud Tasks + job 化によって所要時間が大きく悪化していないか
+- worst-case 操作を入れても `force` なしで自然復帰するか
 
 ### 2026-04-17: 最終 Gemini smoke test
 

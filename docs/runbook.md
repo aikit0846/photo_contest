@@ -15,6 +15,7 @@
 - Cloud Tasks + job を有効にしている場合:
   - 採点開始は iPhone からでもよい
   - 進捗確認と結果確認は MacBook Air の `/admin` で行う
+  - recovery rehearsal は、ブラウザ中断ではなく queue pause / resume を使って見る
 - 会場 Wi-Fi の有無と、4G/5G の入りやすさを確認する
 - 管理用 PC のテザリング or モバイルルーターを準備する
 - HDMI 変換アダプタとプロジェクター接続を確認する

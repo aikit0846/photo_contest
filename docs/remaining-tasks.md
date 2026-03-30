@@ -308,8 +308,9 @@
 
 ## 次にやる順番
 
-1. Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
-2. `2026-04-12` 枠の Gemini recovery test
-3. `2026-04-17` 枠の Gemini smoke test
-4. 実プロジェクター接続で `presentation` の 16:9 最終確認
-5. ゲスト選択画面の並び順を 50 音順にする
+1. `2026-04-12` 枠の Gemini recovery test
+  - Cloud Tasks queue の pause / resume を含む worst-case 確認
+2. `2026-04-17` 枠の Gemini smoke test
+3. 実プロジェクター接続で `presentation` の 16:9 最終確認
+4. ゲスト選択画面の並び順を 50 音順にする
+5. Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
