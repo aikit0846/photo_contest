@@ -535,6 +535,10 @@ uv run python scripts/load_test_dataset.py status --tag 2026-04-10-real20
 
 ### 2026-04-12: 70 件 Gemini recovery test
 
+ステータス:
+
+- 完了
+
 目的:
 
 - Cloud Tasks + job 方式で、部分失敗や queue 停止から回復できるか確認する
@@ -658,6 +662,12 @@ uv run python scripts/load_test_dataset.py status --tag 2026-04-12-gemini70-reco
 - `70` 件が最後まで完走するか
 - Cloud Tasks + job 化によって所要時間が大きく悪化していないか
 - worst-case 操作を入れても `force` なしで自然復帰するか
+
+実施結果:
+
+- iPhone から採点開始して、タブを落としたり MacBook から開いて閉じたりしても想定どおり動いた
+- queue の pause / resume を挟んでも想定どおり回復した
+- worst-case 操作まで含めて、Cloud Tasks + job 方式は期待どおりの挙動を確認できた
 
 ### 2026-04-17: 最終 Gemini smoke test
 
