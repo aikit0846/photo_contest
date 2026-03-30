@@ -37,7 +37,11 @@
         </label>
         <button class="button button-secondary" type="submit">AI 採点を実行</button>
       </form>
-      <p id="judging-status" class="helper-text" hidden></p>
+      <p id="judging-status" class="helper-text" {% if not active_judging_job %}hidden{% endif %}>
+        {% if active_judging_job %}
+        採点ジョブ実行中... {{ active_judging_job.processed_count }}/{{ active_judging_job.total_count }} 件 ({{ active_judging_job.provider_name }})
+        {% endif %}
+      </p>
     </article>
 
     <article class="panel">
@@ -331,7 +335,9 @@
       const result = await getJson("/admin/judging-jobs/current");
       if (result.job && result.job.id) {
         await pollJob(result.job.id);
+        return true;
       }
+      return false;
     }
 
     form.addEventListener("submit", async (event) => {
@@ -419,9 +425,18 @@
         }
         window.location.href = `/admin?message=${encodeURIComponent(`${judged}件を採点しました。(${providerName})`)}`;
       } catch (error) {
+        try {
+          const found = await discoverCurrentJob();
+          if (found) {
+            return;
+          }
+        } catch (_discoveryError) {
+          // Fall through to the generic error message below.
+        }
         setRunningState(false);
+        status.hidden = false;
         status.textContent =
-          "採点の分割実行に失敗しました。`force` を付けずにもう一度実行すると、未採点と failed から再開できます。";
+          "採点開始の通信は切れましたが、バックグラウンドで動いている可能性があります。画面更新後に件数を確認してください。";
       }
     });
 
@@ -432,6 +447,7 @@
         status.textContent = "採点ジョブの進捗取得に失敗しました。ページを再読み込みしてください。";
       });
     } else if (useServerJobs) {
+      discoverCurrentJob().catch(() => {});
       window.setInterval(() => {
         if (!running) {
           discoverCurrentJob().catch(() => {});
