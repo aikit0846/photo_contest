@@ -38,6 +38,10 @@ def init_db() -> None:
                 connection.exec_driver_sql(
                     "ALTER TABLE guests ADD COLUMN side VARCHAR(20) DEFAULT 'groom' NOT NULL",
                 )
+            if "reading" not in guest_column_names:
+                connection.exec_driver_sql(
+                    "ALTER TABLE guests ADD COLUMN reading VARCHAR(120)",
+                )
             event_columns = connection.exec_driver_sql("PRAGMA table_info(events)").fetchall()
             event_column_names = {column[1] for column in event_columns}
             if "feedback_released" not in event_column_names:

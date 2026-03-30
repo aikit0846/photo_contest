@@ -36,7 +36,12 @@ def _dt(value: datetime | str | None) -> datetime:
 def _sort_guests(guests: Iterable[GuestRecord]) -> list[GuestRecord]:
     return sorted(
         guests,
-        key=lambda guest: (guest.side.lower(), guest.group_type.lower(), guest.name.lower()),
+        key=lambda guest: (
+            guest.side.lower(),
+            guest.group_type.lower(),
+            (guest.reading or guest.name).lower(),
+            guest.name.lower(),
+        ),
     )
 
 
@@ -65,6 +70,7 @@ class ContestRepository(Protocol):
         group_type: str,
         eligible: bool,
         display_name: str | None = None,
+        reading: str | None = None,
         notes: str | None = None,
     ) -> GuestRecord: ...
 
@@ -86,6 +92,7 @@ class ContestRepository(Protocol):
         group_type: str,
         eligible: bool,
         display_name: str | None = None,
+        reading: str | None = None,
         notes: str | None = None,
     ) -> GuestRecord: ...
 
@@ -167,6 +174,7 @@ class SqliteContestRepository:
             id=str(value.id),
             name=value.name,
             display_name=value.display_name,
+            reading=value.reading,
             side=value.side,
             table_name=value.table_name,
             group_type=value.group_type,
@@ -261,6 +269,7 @@ class SqliteContestRepository:
             id=str(value.id),
             name=value.name,
             display_name=value.display_name,
+            reading=value.reading,
             side=value.side,
             table_name=value.table_name,
             group_type=value.group_type,
@@ -326,12 +335,14 @@ class SqliteContestRepository:
         group_type: str,
         eligible: bool,
         display_name: str | None = None,
+        reading: str | None = None,
         notes: str | None = None,
     ) -> GuestRecord:
         with SessionLocal() as session:
             guest = sql_models.Guest(
                 name=name.strip(),
                 display_name=(display_name or "").strip() or None,
+                reading=(reading or "").strip() or None,
                 side=side,
                 table_name=(table_name or "").strip() or None,
                 group_type=group_type,
@@ -401,6 +412,7 @@ class SqliteContestRepository:
         group_type: str,
         eligible: bool,
         display_name: str | None = None,
+        reading: str | None = None,
         notes: str | None = None,
     ) -> GuestRecord:
         with SessionLocal() as session:
@@ -409,6 +421,7 @@ class SqliteContestRepository:
                 raise KeyError(guest_id)
             guest.name = name.strip()
             guest.display_name = (display_name or "").strip() or None
+            guest.reading = (reading or "").strip() or None
             guest.side = side
             guest.table_name = (table_name or "").strip() or None
             guest.group_type = group_type
@@ -818,6 +831,7 @@ class FirestoreContestRepository:
             id=document_id,
             name=data["name"],
             display_name=data.get("display_name"),
+            reading=data.get("reading"),
             side=data.get("side", "groom"),
             table_name=data.get("table_name"),
             group_type=data.get("group_type", "friend"),
@@ -890,6 +904,7 @@ class FirestoreContestRepository:
         group_type: str,
         eligible: bool,
         display_name: str | None = None,
+        reading: str | None = None,
         notes: str | None = None,
     ) -> GuestRecord:
         guest_id = uuid.uuid4().hex
@@ -897,6 +912,7 @@ class FirestoreContestRepository:
         payload = {
             "name": name.strip(),
             "display_name": (display_name or "").strip() or None,
+            "reading": (reading or "").strip() or None,
             "side": side,
             "table_name": (table_name or "").strip() or None,
             "group_type": group_type,
@@ -969,6 +985,7 @@ class FirestoreContestRepository:
         group_type: str,
         eligible: bool,
         display_name: str | None = None,
+        reading: str | None = None,
         notes: str | None = None,
     ) -> GuestRecord:
         doc = self.guests.document(guest_id)
@@ -978,6 +995,7 @@ class FirestoreContestRepository:
         patch = {
             "name": name.strip(),
             "display_name": (display_name or "").strip() or None,
+            "reading": (reading or "").strip() or None,
             "side": side,
             "table_name": (table_name or "").strip() or None,
             "group_type": group_type,

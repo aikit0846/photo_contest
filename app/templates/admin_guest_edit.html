@@ -16,6 +16,10 @@
         <input type="text" name="display_name" value="{{ guest.display_name or '' }}" />
       </label>
       <label>
+        よみがな
+        <input type="text" name="reading" value="{{ guest.reading or '' }}" placeholder="ひらがな推奨" />
+      </label>
+      <label>
         側
         <select name="side">
           <option value="groom" {% if guest.side == "groom" %}selected{% endif %}>新郎側</option>

@@ -56,7 +56,13 @@ def category_for_guest(guest: GuestRecord) -> str:
 
 def guests_for_category(repository: ContestRepository, category_key: str) -> list[GuestRecord]:
     guests = [guest for guest in repository.list_guests() if category_for_guest(guest) == category_key]
-    return sorted(guests, key=lambda guest: guest.name)
+    return sorted(
+        guests,
+        key=lambda guest: (
+            (guest.reading or guest.name).lower(),
+            guest.name.lower(),
+        ),
+    )
 
 
 def default_model_hint(settings: Settings, provider_name: str) -> str | None:
@@ -83,6 +89,7 @@ def create_guest(
     group_type: str,
     eligible: bool,
     display_name: str | None = None,
+    reading: str | None = None,
     notes: str | None = None,
 ) -> GuestRecord:
     return repository.create_guest(
@@ -92,6 +99,7 @@ def create_guest(
         group_type=group_type,
         eligible=eligible,
         display_name=display_name,
+        reading=reading,
         notes=notes,
     )
 

@@ -60,6 +60,7 @@ class Guest(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120))
     display_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    reading: Mapped[str | None] = mapped_column(String(120), nullable=True)
     side: Mapped[str] = mapped_column(String(20), default="groom")
     table_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     group_type: Mapped[str] = mapped_column(String(20), default="friend")
