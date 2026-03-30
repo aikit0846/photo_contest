@@ -295,6 +295,8 @@ def run_judging(
     settings: Settings = Depends(get_settings),
 ) -> RedirectResponse:
     event = get_event(repository, settings)
+    if event.feedback_released:
+        event = repository.update_event(feedback_released=False)
     judged, errors, provider_name = judge_submissions(
         repository,
         storage,
@@ -335,6 +337,9 @@ async def start_judging(
     settings: Settings = Depends(get_settings),
 ) -> JSONResponse:
     payload = await request.json()
+    event = get_event(repository, settings)
+    if event.feedback_released:
+        repository.update_event(feedback_released=False)
     try:
         job, started = start_judging_job(
             repository,
