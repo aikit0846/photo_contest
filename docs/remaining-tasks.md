@@ -108,10 +108,11 @@
   - 未確認 / 必要なら追加で見る:
     - AI provider 切替の保存挙動
 
-- [ ] Cloud Run の `APP_URL` を alias URL 側へ切り替える
+- [x] Cloud Run の `APP_URL` を alias URL 側へ切り替えた
   - 採用する guest 向け URL は `https://wedding-photo-contest-doef3tydea-an.a.run.app`
-  - `/admin/guests` の共通リンク表示も alias 側へ揃えたい
-  - Cloud Tasks callback の host も `APP_URL` ベースなので、queue purge を含めて切り替える
+  - `/admin/guests` の共通リンク表示も alias 側へ揃った
+  - Cloud Tasks queue の `pause / purge / resume` も実施済み
+  - alias host で iPhone 開始 / MacBook 確認の流れも最小構成で確認済み
 
 - [ ] Cloud Run 上で presentation を実機確認する
   - MacBook Air M2
@@ -160,7 +161,7 @@
 - [x] `APP_URL` を alias URL 側へ寄せる判断をした
   - 印刷済み QR は `https://wedding-photo-contest-doef3tydea-an.a.run.app/entry`
   - guest が触る host とアプリ生成リンクを揃えるため、`APP_URL` も alias 側へ寄せる方針
-  - あとは実際の切り替えと再デプロイだけ
+  - 実際の切り替えと再デプロイも完了済み
 
 ## P1: 当日運用の安全性を上げる
 
@@ -339,8 +340,7 @@
 
 ## 次にやる順番
 
-1. Cloud Run の `APP_URL` を alias URL 側へ切り替えて再デプロイする
-2. `2026-04-17` 枠の Gemini smoke test
-3. 実プロジェクター接続で `presentation` の 16:9 最終確認
-4. Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
-5. guest 導線の UI 改善を入れる
+1. `2026-04-17` 枠の Gemini smoke test
+2. 実プロジェクター接続で `presentation` の 16:9 最終確認
+3. Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
+4. guest 導線の UI 改善を入れる
