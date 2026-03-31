@@ -24,8 +24,8 @@ from app.storage import BaseImageStorage
 
 ENTRY_CATEGORY_OPTIONS = [
     {"key": "groom-friend", "label": "新郎友人"},
-    {"key": "bride-friend", "label": "新婦友人"},
     {"key": "groom-family", "label": "新郎親族"},
+    {"key": "bride-friend", "label": "新婦友人"},
     {"key": "bride-family", "label": "新婦親族"},
 ]
 
