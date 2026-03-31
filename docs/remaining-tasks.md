@@ -138,17 +138,22 @@
   - 現在の Cloud Run URL で進める前提
   - `service name` と `region` は本番まで運用で固定する
 
-- [ ] 印刷済み QR の alias URL から guest 導線の E2E を確認する
+- [x] 印刷済み QR の alias URL から guest 導線の E2E を確認した
   - 印刷物は `https://wedding-photo-contest-doef3tydea-an.a.run.app/entry` を向いている
-  - 本番でゲストが触るのはこの URL なので、この URL から
+  - この URL からテストユーザで
     - `/entry`
     - カテゴリ選択
     - 名前選択
     - 投稿
     - 差し替え
-    - 締切後の表示
-    を通しで確認したい
-  - 可能なら iPhone 実機で一度確認する
+    - `/admin` で投稿確認
+    - 投稿締切
+    - `gemini-2.5-flash` 採点
+    - `/presentation`
+    - フィードバック公開
+    - guest 側確認
+    を通しで確認済み
+  - 問題なさそう
 
 - [ ] `APP_URL` を alias URL 側へ寄せるか判断し、必要なら切り替える
   - 印刷済み QR は `https://wedding-photo-contest-doef3tydea-an.a.run.app/entry`
@@ -336,9 +341,8 @@
 
 ## 次にやる順番
 
-1. 印刷済み QR の alias URL から guest 導線の E2E を確認する
-2. `APP_URL` を alias URL 側へ寄せるか判断し、必要なら切り替える
-3. `2026-04-17` 枠の Gemini smoke test
-4. 実プロジェクター接続で `presentation` の 16:9 最終確認
-5. Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
-6. guest 導線の UI 改善を入れる
+1. `APP_URL` を alias URL 側へ寄せるか判断し、必要なら切り替える
+2. `2026-04-17` 枠の Gemini smoke test
+3. 実プロジェクター接続で `presentation` の 16:9 最終確認
+4. Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
+5. guest 導線の UI 改善を入れる
