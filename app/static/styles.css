@@ -388,6 +388,11 @@ button {
 .category-card {
   position: relative;
   overflow: hidden;
+  border-width: 2px;
+  align-items: flex-end;
+  justify-content: flex-start;
+  text-align: left;
+  line-height: 1.3;
 }
 
 .category-card::after {
@@ -398,24 +403,37 @@ button {
   pointer-events: none;
 }
 
+.category-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 12px;
+  background: rgba(49, 36, 28, 0.14);
+  pointer-events: none;
+}
+
 .category-card-groom-friend {
-  border-color: #d8c0a8;
-  background: linear-gradient(180deg, #fff7ef 0%, #f7ebde 100%);
+  border-color: #c78f54;
+  background: linear-gradient(180deg, #fff2e0 0%, #efc996 100%);
+  color: #6f4218;
 }
 
 .category-card-groom-family {
-  border-color: #c5c0b3;
-  background: linear-gradient(180deg, #f8f4ee 0%, #ede6dc 100%);
+  border-color: #9b856d;
+  background: linear-gradient(180deg, #f4ede4 0%, #d7c3aa 100%);
+  color: #4f3d2b;
 }
 
 .category-card-bride-friend {
-  border-color: #d8b7c4;
-  background: linear-gradient(180deg, #fff2f6 0%, #f5e3ea 100%);
+  border-color: #c86f8f;
+  background: linear-gradient(180deg, #ffeaf1 0%, #f3b6ca 100%);
+  color: #7b2747;
 }
 
 .category-card-bride-family {
-  border-color: #cbbbd2;
-  background: linear-gradient(180deg, #f7f1fb 0%, #ece3f3 100%);
+  border-color: #8d79b3;
+  background: linear-gradient(180deg, #f1ecff 0%, #cfc1ee 100%);
+  color: #4f3d77;
 }
 
 .name-button {
