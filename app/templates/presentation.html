@@ -117,6 +117,7 @@
         const confettiLayer = document.getElementById("confetti-layer");
         const stageViewport = document.getElementById("presentation-stage-viewport");
         const stageWrap = document.getElementById("presentation-stage-wrap");
+        const controls = document.querySelector(".presentation-controls");
 
         const revealRanks = podiumCards
           .map((card) => Number(card.dataset.rank))
@@ -242,6 +243,9 @@
             return;
           }
           focusStage.hidden = false;
+          if (controls) {
+            controls.hidden = true;
+          }
           focusStage.dataset.rank = String(rank);
           focusCard.dataset.rank = String(rank);
           focusCard.dataset.orientation = data.orientation;
@@ -264,6 +268,9 @@
         function hideFocus() {
           if (focusStage) {
             focusStage.hidden = true;
+          }
+          if (controls) {
+            controls.hidden = false;
           }
           stopTyping();
           if (focusComment) {
