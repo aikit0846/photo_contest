@@ -138,6 +138,27 @@
   - 現在の Cloud Run URL で進める前提
   - `service name` と `region` は本番まで運用で固定する
 
+- [ ] 印刷済み QR の alias URL から guest 導線の E2E を確認する
+  - 印刷物は `https://wedding-photo-contest-doef3tydea-an.a.run.app/entry` を向いている
+  - 本番でゲストが触るのはこの URL なので、この URL から
+    - `/entry`
+    - カテゴリ選択
+    - 名前選択
+    - 投稿
+    - 差し替え
+    - 締切後の表示
+    を通しで確認したい
+  - 可能なら iPhone 実機で一度確認する
+
+- [ ] `APP_URL` を alias URL 側へ寄せるか判断し、必要なら切り替える
+  - 印刷済み QR は `https://wedding-photo-contest-doef3tydea-an.a.run.app/entry`
+  - 今の `APP_URL` は canonical 側なので、guest が触る host とアプリ生成リンクが混在している
+  - alias URL の guest 導線 E2E が問題なければ、`APP_URL` も alias 側に揃える方が安全そう
+  - 切り替える場合は:
+    - 再デプロイ
+    - Cloud Tasks callback の整合確認
+    - queue purge の要否確認
+
 ## P1: 当日運用の安全性を上げる
 
 - [x] 本番用ゲスト一覧とテストユーザー登録を完了した
@@ -148,6 +169,11 @@
 - [x] ゲスト選択画面の並び順を 50 音順にした
   - `reading` フィールドを追加して、カテゴリ内の guest 一覧を 50 音順で並べるようにした
   - 本番ゲストのよみがな入力も完了済み
+
+- [ ] guest 導線の UI 改善を入れる
+  - `新郎友人 / 新郎親族 / 新婦友人 / 新婦親族` のボタン色を分けたい
+  - 名前選択画面に `(五十音順)` などの注記を入れたい
+  - 本番前の必須ではないが、時間があればやる
 
 - [x] 当日運用手順を 1 回 rehearsal した
   - 投稿受付を開く
@@ -165,6 +191,7 @@
   - iPhone から採点開始するパターンも確認済み
   - iPhone は採点開始直後に画面ロック、PC も閉じた状態で継続した
   - しばらく待って PC を開き直し、画面更新すると結果が反映されていた
+  - `2026-04-12` 枠の recovery test で、queue の `pause / resume` を含む worst-case 操作も想定どおり通った
 
 - [ ] Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
   - iPhone で採点開始してすぐ画面ロックすると、失敗系メッセージが出ることがあった
@@ -309,6 +336,9 @@
 
 ## 次にやる順番
 
-1. `2026-04-17` 枠の Gemini smoke test
-2. 実プロジェクター接続で `presentation` の 16:9 最終確認
-3. Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
+1. 印刷済み QR の alias URL から guest 導線の E2E を確認する
+2. `APP_URL` を alias URL 側へ寄せるか判断し、必要なら切り替える
+3. `2026-04-17` 枠の Gemini smoke test
+4. 実プロジェクター接続で `presentation` の 16:9 最終確認
+5. Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
+6. guest 導線の UI 改善を入れる
