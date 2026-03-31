@@ -16,7 +16,16 @@
 
   <div class="category-grid">
     {% for category in categories %}
-    <a class="category-card category-card-{{ category.key }}" href="/entry/category/{{ category.key }}">{{ category.label }}</a>
+    {% if category.key == "groom-friend" %}
+    {% set category_style = "background: linear-gradient(180deg, #fff2e0 0%, #efc996 100%); border-color: #c78f54; color: #6f4218;" %}
+    {% elif category.key == "groom-family" %}
+    {% set category_style = "background: linear-gradient(180deg, #f4ede4 0%, #d7c3aa 100%); border-color: #9b856d; color: #4f3d2b;" %}
+    {% elif category.key == "bride-friend" %}
+    {% set category_style = "background: linear-gradient(180deg, #ffeaf1 0%, #f3b6ca 100%); border-color: #c86f8f; color: #7b2747;" %}
+    {% else %}
+    {% set category_style = "background: linear-gradient(180deg, #f1ecff 0%, #cfc1ee 100%); border-color: #8d79b3; color: #4f3d77;" %}
+    {% endif %}
+    <a class="category-card category-card-{{ category.key }}" href="/entry/category/{{ category.key }}" style="{{ category_style }}">{{ category.label }}</a>
     {% endfor %}
   </div>
 </section>
