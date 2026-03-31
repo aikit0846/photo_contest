@@ -25,13 +25,14 @@ export BUCKET_NAME=wedding-photo-contest-20260419-assets
 export SERVICE_NAME=wedding-photo-contest
 ```
 
-`APP_URL` だけは、Cloud Run service の本番で採用する URL を明示して使います。
+`APP_URL` だけは、Cloud Run service の本番で採用する guest-facing URL を明示して使います。
 
-- この project では、canonical な本番 URL を次に固定する:
-  - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app`
+- この project では、guest 向けに採用する URL を次に固定する:
+  - `https://wedding-photo-contest-doef3tydea-an.a.run.app`
 - Cloud Run は `run.app` と `a.run.app` など複数の正規 URL を返すことがある
 - `gcloud run services describe ... --format='value(status.url)'` が `a.run.app` 側を返しても、そのまま `APP_URL` に採用しない
-- QR コード、招待 URL、Cloud Tasks callback の整合を守るため、この repository では `APP_URL` を明示値で固定する
+- 印刷済み QR が alias 側を向いているため、この repository では `APP_URL` も alias 側へ揃える
+- QR コード、招待 URL、Cloud Tasks callback の整合を守るため、`APP_URL` を明示値で固定する
 
 ```bash
 gcloud run services describe "$SERVICE_NAME" \
@@ -42,7 +43,7 @@ gcloud run services describe "$SERVICE_NAME" \
 上のコマンドは参考確認用です。`APP_URL` として採用するのは次の明示値です。
 
 ```bash
-export APP_URL="https://wedding-photo-contest-228664142250.asia-northeast1.run.app"
+export APP_URL="https://wedding-photo-contest-doef3tydea-an.a.run.app"
 echo "$APP_URL"
 ```
 
@@ -109,8 +110,12 @@ gcloud config set run/region "$REGION"
 gcloud run services describe "$SERVICE_NAME" \
   --region "$REGION" \
   --format='value(status.url)'
+```
 
-export APP_URL="https://wedding-photo-contest-228664142250.asia-northeast1.run.app"
+この project では、実際に使う値は次です。
+
+```bash
+export APP_URL="https://wedding-photo-contest-doef3tydea-an.a.run.app"
 echo "$APP_URL"
 ```
 
@@ -342,8 +347,19 @@ gcloud run services describe "$SERVICE_NAME" \
 gcloud run services describe "$SERVICE_NAME" \
   --region "$REGION" \
   --format='value(status.url)'
+```
 
-export APP_URL="https://wedding-photo-contest-228664142250.asia-northeast1.run.app"
+この project では、実際に使う値は次です。
+
+```bash
+export APP_URL="https://wedding-photo-contest-doef3tydea-an.a.run.app"
+echo "$APP_URL"
+```
+
+この project では、実際に使う値は次です。
+
+```bash
+export APP_URL="https://wedding-photo-contest-doef3tydea-an.a.run.app"
 echo "$APP_URL"
 ```
 

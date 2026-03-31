@@ -1,12 +1,14 @@
 # Wedding Photo Contest Remaining Tasks
 
-2026-03-29 時点の残タスク整理です。
+2026-03-31 時点の残タスク整理です。
 
 ## 現在地
 
 - Cloud Run service `wedding-photo-contest` への再デプロイは実施済み
-- Cloud Run URL:
+- Cloud Run service URL:
   - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app`
+- ゲスト向けに採用する URL:
+  - `https://wedding-photo-contest-doef3tydea-an.a.run.app`
 - `GOOGLE_API_KEY` は設定済み
 - 本番用ゲストとテストユーザーの登録は完了
 - テストユーザーは直前まで残して運用確認に使う方針
@@ -52,8 +54,8 @@
 - `/admin/guests` も Basic 認証つきで本番アクセス可能
 - `/admin/guests` 上の `共通 QR コード` 近くに表示される URL は、現在の本番 URL に修正済み
   - 修正後の表示:
-    - `https://wedding-photo-contest-228664142250.asia-northeast1.run.app/entry`
-  - `APP_URL` のズレは解消済み
+    - `https://wedding-photo-contest-doef3tydea-an.a.run.app/entry`
+  - ゲスト向けに使う host は alias 側へ揃える方針
 
 ## P0: 本番前に最優先で潰す
 
@@ -106,10 +108,10 @@
   - 未確認 / 必要なら追加で見る:
     - AI provider 切替の保存挙動
 
-- [x] Cloud Run の `APP_URL` を現在の本番 URL に修正した
-  - `/admin/guests` の共通リンク表示は新 URL を向いている
-  - `common_entry_url` は修正済み
-  - `共通 QR` も同じ helper を使っているため、新 URL 前提になっていると判断できる
+- [ ] Cloud Run の `APP_URL` を alias URL 側へ切り替える
+  - 採用する guest 向け URL は `https://wedding-photo-contest-doef3tydea-an.a.run.app`
+  - `/admin/guests` の共通リンク表示も alias 側へ揃えたい
+  - Cloud Tasks callback の host も `APP_URL` ベースなので、queue purge を含めて切り替える
 
 - [ ] Cloud Run 上で presentation を実機確認する
   - MacBook Air M2
@@ -155,14 +157,10 @@
     を通しで確認済み
   - 問題なさそう
 
-- [ ] `APP_URL` を alias URL 側へ寄せるか判断し、必要なら切り替える
+- [x] `APP_URL` を alias URL 側へ寄せる判断をした
   - 印刷済み QR は `https://wedding-photo-contest-doef3tydea-an.a.run.app/entry`
-  - 今の `APP_URL` は canonical 側なので、guest が触る host とアプリ生成リンクが混在している
-  - alias URL の guest 導線 E2E が問題なければ、`APP_URL` も alias 側に揃える方が安全そう
-  - 切り替える場合は:
-    - 再デプロイ
-    - Cloud Tasks callback の整合確認
-    - queue purge の要否確認
+  - guest が触る host とアプリ生成リンクを揃えるため、`APP_URL` も alias 側へ寄せる方針
+  - あとは実際の切り替えと再デプロイだけ
 
 ## P1: 当日運用の安全性を上げる
 
@@ -341,7 +339,7 @@
 
 ## 次にやる順番
 
-1. `APP_URL` を alias URL 側へ寄せるか判断し、必要なら切り替える
+1. Cloud Run の `APP_URL` を alias URL 側へ切り替えて再デプロイする
 2. `2026-04-17` 枠の Gemini smoke test
 3. 実プロジェクター接続で `presentation` の 16:9 最終確認
 4. Cloud Tasks + job 方式の進捗表示 / エラーメッセージ UX を整える
