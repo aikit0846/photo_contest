@@ -28,8 +28,9 @@
     </section>
     {% endif %}
     <main class="presentation-shell">
-      {% if winners %}
       <section class="presentation-controls">
+        <a class="presentation-control-link presentation-control-link-muted" href="/admin">管理画面に戻る</a>
+        {% if winners %}
         {% if event.feedback_released %}
         <form method="post" action="/admin/event/feedback/hide">
           <input type="hidden" name="redirect_to" value="/presentation" />
@@ -41,8 +42,8 @@
           <button class="presentation-control-link" type="submit">フィードバック公開</button>
         </form>
         {% endif %}
+        {% endif %}
       </section>
-      {% endif %}
       <header class="presentation-header">
         <p class="eyebrow">AI Photo Contest Result</p>
         <h1>{{ event.title }}</h1>

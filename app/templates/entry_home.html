@@ -16,7 +16,7 @@
 
   <div class="category-grid">
     {% for category in categories %}
-    <a class="category-card" href="/entry/category/{{ category.key }}">{{ category.label }}</a>
+    <a class="category-card category-card-{{ category.key }}" href="/entry/category/{{ category.key }}">{{ category.label }}</a>
     {% endfor %}
   </div>
 </section>

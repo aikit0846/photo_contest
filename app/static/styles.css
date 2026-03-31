@@ -385,6 +385,39 @@ button {
   text-align: center;
 }
 
+.category-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.category-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 60%);
+  pointer-events: none;
+}
+
+.category-card-groom-friend {
+  border-color: #d8c0a8;
+  background: linear-gradient(180deg, #fff7ef 0%, #f7ebde 100%);
+}
+
+.category-card-groom-family {
+  border-color: #c5c0b3;
+  background: linear-gradient(180deg, #f8f4ee 0%, #ede6dc 100%);
+}
+
+.category-card-bride-friend {
+  border-color: #d8b7c4;
+  background: linear-gradient(180deg, #fff2f6 0%, #f5e3ea 100%);
+}
+
+.category-card-bride-family {
+  border-color: #cbbbd2;
+  background: linear-gradient(180deg, #f7f1fb 0%, #ece3f3 100%);
+}
+
 .name-button {
   width: 100%;
   cursor: pointer;
@@ -918,6 +951,15 @@ select {
 .presentation-control-link:hover,
 .presentation-control-link:focus-visible {
   text-decoration: underline;
+}
+
+.presentation-control-link-muted {
+  opacity: 0.56;
+}
+
+.presentation-control-link-muted:hover,
+.presentation-control-link-muted:focus-visible {
+  opacity: 0.88;
 }
 
 .presentation-header {
