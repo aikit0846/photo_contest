@@ -944,7 +944,7 @@ select {
   position: absolute;
   right: 8px;
   bottom: 4px;
-  z-index: 34;
+  z-index: 18;
   opacity: 0.26;
 }
 
@@ -1045,7 +1045,7 @@ select {
 .focus-stage {
   position: fixed;
   inset: 0;
-  z-index: 24;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1092,7 +1092,7 @@ select {
 .focus-card-clone {
   position: fixed;
   margin: 0;
-  z-index: 32;
+  z-index: 42;
   transform-origin: top left;
   will-change: transform, opacity;
   transition:
